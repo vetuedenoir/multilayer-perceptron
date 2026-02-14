@@ -1,0 +1,4 @@
+.pvenv
+__pycache__
+*/__pycache__
+weight.json
