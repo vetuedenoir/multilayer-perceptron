@@ -4,6 +4,7 @@ from model.activations import Sigmoid, Softmax
 from model.metrics import accuracy_score_ , precision_score_, recall_score_, f1_score_
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 
 
 class Model:
@@ -16,6 +17,14 @@ class Model:
             self.loss = None
             self.backward_loss = None
             self.opti = False
+            self.metric_functions = {
+                'accuracy': accuracy_score_,
+                'precision': precision_score_,
+                'recall': recall_score_,
+                'f1': f1_score_
+            }
+            self.train_historique = {'accuracy': [], 'precision': [], 'recall': [], 'f1': [], 'loss': []}
+            self.valid_historique = {'accuracy': [], 'precision': [], 'recall': [], 'f1': [], 'loss': []}
 
     def createWeigts(self, X):
 
@@ -85,8 +94,9 @@ class Model:
         loss = self.loss.forward(validation_Y, y_pred)
 
 
-    def fit_(self, x, y, epoch=600, learning_rate=0.001,  batch_size=128, validation_X=None, validation_Y=None):
-        
+    def fit_(self, x, y, epochs=1000, learning_rate=0.001,  batch_size=128, validation_X=None, validation_Y=None):
+
+        self.epochs = epochs
         if self.loss is None:
             raise RuntimeError("Cannot fit the model if the loss function is not defined, "
             "please use the compile method to define the loss function before fitting the model.")
@@ -105,7 +115,7 @@ class Model:
             raise ValueError("Invalide shape for y, expected a shape of (m, n) " \
             "with n equal to the number of units in the last layer for CategoricalCrossentropy loss.")
 
-        for ep in range(epoch):
+        for ep in range(epochs):
             y_pred = self.foward(x)
 
             loss = self.loss.forward(y, y_pred)
@@ -121,19 +131,31 @@ class Model:
             if validation_X is not None:
                 y_pred_valide = self.foward(validation_X)
                 loss_valide = self.loss.forward(validation_Y, y_pred_valide)
-                accuracy_valide = accuracy_score_(validation_Y, (y_pred_valide >= 0.5).astype(int))
-                print(f"epoch:{ep} , loss: {loss:5f}, accuracy: {accuracy:5f} | "
-                      f"loss_valid: {loss_valide:5f}, accuracy_valid: {accuracy_valide:5f}")
-            else:
-                print(f"epoch:{ep} , loss: {loss:5f}, accuracy: {accuracy:5f}")
 
+                classified_prediction = (y_pred_valide >= 0.5).astype(int)
+                accuracy_valide = accuracy_score_(validation_Y, classified_prediction)
+                false_positive = precision_score_(validation_Y, classified_prediction)
+                false_negative = recall_score_(validation_Y, classified_prediction)
+                f1 = f1_score_(validation_Y, classified_prediction)
+                print(f"epochs:{ep} , loss: {loss:.4f}, accuracy: {accuracy:.4f} | "
+                      f"loss_valid: {loss_valide:.4f}, accuracy_valid: {accuracy_valide:.4f}")
+                print(f"false_positive: {false_positive:.4f}, false_negative: {false_negative:.4f}"
+                      f", f1_score: {f1:.4f}")
+                self.valid_historique['loss'].append(loss_valide)
+                self.valid_historique['accuracy'].append(accuracy_valide)
+                self.valid_historique['precision'].append(false_positive)
+                self.valid_historique['recall'].append(false_negative)
+                self.valid_historique['f1'].append(f1)
+            else:
+                print(f"epochs:{ep} , loss: {loss:.4f}, accuracy: {accuracy:.4f}")
+            
+            self.train_historique['loss'].append(loss)
+            self.train_historique['accuracy'].append(accuracy)
             # accuracy = accuracy_score_(y, np.where(y_pred <= 0.5, 0, 1))
             # accuracy_valide = accuracy_score_(validation_Y, np.where(y_pred_valide <= 0.5, 0, 1))
 
 
-
-
-    def compile(self, loss):
+    def compile(self, loss, metrics=['accuracy']):
         if loss == "BinaryCrossentropy":
             self.loss = BinaryCrossentropy()
             if self.layers[-1].activation == Sigmoid:
@@ -155,6 +177,15 @@ class Model:
         for i in range(len(self.layers)):
             self.layers[i].activation = self.layers[i].activation()
 
+        valid_metrics = set(self.metric_functions.keys())
+        for metric in metrics:
+            if metric not in valid_metrics:
+                raise ValueError(
+                    f"Metric '{metric}' is not supported. "
+                    f"Valid metrics are: {valid_metrics}."
+                )
+        self.metrics = metrics
+        
 
 
     def save_weigts_bias(self):
@@ -197,7 +228,32 @@ class Model:
         except IOError as e:
             print(f"Error: cannot read in file {e}")
 
+    def plot_loss(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 10))
 
+        epochs = range(1, 1 + len((self.train_historique['loss'])))
+        # subplot 1: Loss
+        ax1.plot(epochs, self.train_historique['loss'], label='Train Loss', color='blue')
+        ax1.plot(epochs, self.valid_historique['loss'], label='Validation Loss', color='orange')
+        ax1.set_title('Training and Validation Loss')
+        ax1.set_xlabel('Epochs')
+        ax1.set_ylabel('Loss')
+        ax1.legend()
+        ax1.grid(True)
+        
+        ax2.plot(epochs, self.train_historique['accuracy'], label="Train Accuracy", color='blue')
+        ax2.plot(epochs, self.valid_historique['accuracy'], label="Validation Accuracy", color='orange')
+        ax2.plot(epochs, self.valid_historique['f1'], label="Validation F1 score", color="red")
+        ax2.set_title('Training and Validation accuracy')
+        ax2.set_xlabel('Epochs')
+        ax2.set_ylabel('accuracy')
+        ax2.legend()
+        ax2.grid(True)
+
+        plt.tight_layout()
+        plt.show()
+
+    
 
 # ml = Model([
     # DenseLayer(10, 'ReLU'),

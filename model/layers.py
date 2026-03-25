@@ -3,17 +3,13 @@ from model.activations import Sigmoid, ReLU, LeakyReLU, Softmax
 
 
 class DenseLayer:
-    def	__init__(self, units: int, activation: str, input_size=None):
+    def	__init__(self, units: int, activation: str, weights_initializer=''):
         if not isinstance(units, int) or units <= 0:
             raise ValueError("Received an invalide value for 'units', "
             "expected a positive integer.")
         self.weights = np.empty((0)) # tableau numpy
         self.bias = np.empty((0)) # tableau numpy
         self.units = units
-        if isinstance(input_size, int):
-            self.weights = np.random.randn(self.units, input_size)
-            # self.bias = np.random.randn(self.units, 1)
-            self.bias = np.zeros((1, units))
 
         if activation == 'Sigmoid':
             self.activation = Sigmoid
@@ -27,28 +23,62 @@ class DenseLayer:
             raise NameError("Received an invalide name for 'activation', "
                     "expected an str equal to 'Sigmoid', 'ReLU', 'LeakyReLU'"
                     " or 'Softmax'.")
+        
+        if weights_initializer != '' and weights_initializer != 'zero' \
+            and weights_initializer != 'randomNormal' \
+            and weights_initializer != 'randomUniform' \
+            and weights_initializer != 'heUniform' \
+            and weights_initializer != 'heNormal' \
+            and weights_initializer != 'glorotUniform' \
+            and weights_initializer != 'glorotNormal':
+            raise NameError("Received an invalide name for 'weights_initializer', "
+                    "expected an str equal to 'zero', 'randomNormal',"
+                    "'randomUniform', 'heUniform', 'heNormal', "
+                    "'glorotUniform' or 'glorotNormal ")
+        self.weights_initializer = weights_initializer
+        if weights_initializer == '':
+            self.weights_initializer = 'randomNormal'
+            
 
 
     def init_weightBias(self, input_size: int):
         if not isinstance(input_size, int) or input_size <= 0:
             raise ValueError("Received an invalide value for 'input_size', "
                     "expected a positive integer.")
-        
-        self.weights = np.random.randn(self.units, input_size).astype(np.float32)
-        # self.weights = np.random.randn(input_size, self.units)
+
+        match self.weights_initializer:
+            case "zero":
+                self.weights = np.zeros((self.units, input_size))
+                # problem
+            case "randomNormal":
+                self.weights = np.random.normal(loc=0.0, scale=1.0, size=(self.units, input_size))
+            case "randomUniform":
+                self.weights = np.random.uniform(-1, 1, size=(self.units, input_size))
+            case "heUniform":
+                limit = np.sqrt(6 / input_size)
+                self.weights = np.random.uniform(-limit, limit, size=(self.units, input_size))
+            case "heNormal":
+                sigma =  np.sqrt(2 / input_size)
+                self.weights = np.random.normal(loc=0, scale=sigma, size=(self.units, input_size))
+            case "glorotUniform":
+                limit = np.sqrt(6 / (input_size + self.units))
+                self.weights = np.random.uniform(-limit, limit, size=(self.units, input_size))
+            case "glorotNormal":
+                sigma = np.sqrt(2 / (input_size + self.units))
+                self.weights = np.random.normal(loc=0, scale=sigma, size=(self.units, input_size))
+            case _:
+                self.weights = np.random.randn(self.units, input_size)
 
         self.bias = np.zeros((1, self.units))
         
 
     def	forward(self, x):
         self.input = x
-        # self.z = self.weights * self.input  + self.bias
         self.z = self.input @ self.weights.T + self.bias
         self.a = self.activation.forward(self.z)
         return self.a
     
     def backward(self, dA, from_loss=False):
-        # print("dA shape = ", dA.shape)
         if from_loss is True:
             dZ = dA
         else:    
@@ -61,10 +91,6 @@ class DenseLayer:
     
     def update(self, alpha):
         # alpha c'est le learning rate.
-        # print("weights dtype:", self.weights.dtype)
-        # print("dW dtype:", self.dW.dtype)
-
-        # print(f"weights shape {self.weights.shape}, et self.dW shape = {self.dW.shape}")
 
         self.weights -= alpha * self.dW
         self.bias -= alpha * self.db
