@@ -23,8 +23,8 @@ class Model:
                 'recall': recall_score_,
                 'f1': f1_score_
             }
-            self.train_historique = {'accuracy': [], 'precision': [], 'recall': [], 'f1': [], 'loss': []}
-            self.valid_historique = {'accuracy': [], 'precision': [], 'recall': [], 'f1': [], 'loss': []}
+            self.train_historique = {'loss': []}
+            self.valid_historique = {'loss': []}
 
     def createWeigts(self, X):
 
@@ -94,7 +94,7 @@ class Model:
         loss = self.loss.forward(validation_Y, y_pred)
 
 
-    def fit_(self, x, y, epochs=1000, learning_rate=0.001,  batch_size=128, validation_X=None, validation_Y=None):
+    def fit_(self, x, y, epochs=100, learning_rate=0.001,  batch_size=128, validation_X=None, validation_Y=None):
 
         self.epochs = epochs
         if self.loss is None:
@@ -116,43 +116,60 @@ class Model:
             "with n equal to the number of units in the last layer for CategoricalCrossentropy loss.")
 
         for ep in range(epochs):
+            # --- Forward Pass (Training) ---
             y_pred = self.foward(x)
-
             loss = self.loss.forward(y, y_pred)
-            
+
+            # --- Backward Pass ---
             dA = self.backward_loss(y, y_pred)
-            # print("dA shape in mlp = ", dA.shape)
-            self.backward(dA, from_loss=self.opti)
-            
+            self.backward(dA, from_loss=self.opti)     
             self.update(learning_rate)
 
 
-            accuracy = accuracy_score_(y,(y_pred >= 0.5).astype(int))
+            # --- Calcul des métriques de training ---
+            train_metrics = {}
+            classified_pred_train = (y_pred >= 0.5).astype(int)
+
+            self.train_historique['loss'].append(loss)
+
+            for metric_name, metric_func in self.metric_functions.items():
+                if metric_name in self.metrics:
+                    metric_value = metric_func(y, classified_pred_train)
+                    train_metrics[metric_name] = metric_value
+                    self.train_historique[metric_name].append(metric_value)
+
+
+             # --- Calcul des métriques de validation ---
+            valide_metrics = {}
             if validation_X is not None:
                 y_pred_valide = self.foward(validation_X)
-                loss_valide = self.loss.forward(validation_Y, y_pred_valide)
+                classified_pred_valide = (y_pred_valide >= 0.5).astype(int)
 
-                classified_prediction = (y_pred_valide >= 0.5).astype(int)
-                accuracy_valide = accuracy_score_(validation_Y, classified_prediction)
-                false_positive = precision_score_(validation_Y, classified_prediction)
-                false_negative = recall_score_(validation_Y, classified_prediction)
-                f1 = f1_score_(validation_Y, classified_prediction)
-                print(f"epochs:{ep} , loss: {loss:.4f}, accuracy: {accuracy:.4f} | "
-                      f"loss_valid: {loss_valide:.4f}, accuracy_valid: {accuracy_valide:.4f}")
-                print(f"false_positive: {false_positive:.4f}, false_negative: {false_negative:.4f}"
-                      f", f1_score: {f1:.4f}")
+                loss_valide = self.loss.forward(validation_Y, y_pred_valide)
                 self.valid_historique['loss'].append(loss_valide)
-                self.valid_historique['accuracy'].append(accuracy_valide)
-                self.valid_historique['precision'].append(false_positive)
-                self.valid_historique['recall'].append(false_negative)
-                self.valid_historique['f1'].append(f1)
-            else:
-                print(f"epochs:{ep} , loss: {loss:.4f}, accuracy: {accuracy:.4f}")
-            
-            self.train_historique['loss'].append(loss)
-            self.train_historique['accuracy'].append(accuracy)
-            # accuracy = accuracy_score_(y, np.where(y_pred <= 0.5, 0, 1))
-            # accuracy_valide = accuracy_score_(validation_Y, np.where(y_pred_valide <= 0.5, 0, 1))
+                
+                for metric_name, metric_func in self.metric_functions.items():
+                    if metric_name in self.metrics:
+                        metric_value = metric_func(validation_Y, classified_pred_valide)
+                        valide_metrics[metric_name] = metric_value
+                        self.valid_historique[metric_name].append(metric_value)
+
+            self._print_metrics(ep, train_metrics, valide_metrics)
+
+
+    def _print_metrics(self, epoch, metrics_train, metrics_validation=None):
+
+        string_MT = [f"train_{key}: {value:.4f}, " for key, value in metrics_train.items()]
+        if string_MT:
+            string_MT[-1] = string_MT[-1][:-2]
+
+        final_string = f"epochs:{epoch} >> " + "".join(string_MT)
+        if metrics_validation is not None:
+            string_MV = [f"valid_{key}: {value:.4f}, " for key, value in metrics_validation.items()]
+            if string_MV:
+                string_MV[-1] = string_MV[-1][:-2]
+            final_string = final_string + " | " + "".join(string_MV)
+        print(final_string)
 
 
     def compile(self, loss, metrics=['accuracy']):
@@ -184,8 +201,9 @@ class Model:
                     f"Metric '{metric}' is not supported. "
                     f"Valid metrics are: {valid_metrics}."
                 )
+            self.train_historique[metric] = []
+            self.valid_historique[metric] = []
         self.metrics = metrics
-        
 
 
     def save_weigts_bias(self):
@@ -231,20 +249,54 @@ class Model:
     def plot_loss(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 10))
 
+        metric_colors = {
+            'loss': 'blue',
+            'accuracy': 'green',
+            'precision': 'red',
+            'recall': 'purple',
+            'f1': 'orange'
+        }
+
+        train_style = '-'
+        val_style = '--'
+
         epochs = range(1, 1 + len((self.train_historique['loss'])))
         # subplot 1: Loss
-        ax1.plot(epochs, self.train_historique['loss'], label='Train Loss', color='blue')
-        ax1.plot(epochs, self.valid_historique['loss'], label='Validation Loss', color='orange')
-        ax1.set_title('Training and Validation Loss')
+        ax1.plot(epochs, self.train_historique['loss'], label='Train Loss',
+                 color='royalblue', linestyle=train_style)
+        ax1.set_title('Training Loss')
+        if self.valid_historique['loss']:
+            ax1.plot(epochs, self.valid_historique['loss'], label='Validation Loss',
+                     color=metric_colors['loss'], linestyle=val_style)
+            ax1.set_title('Training and Validation Loss')
         ax1.set_xlabel('Epochs')
         ax1.set_ylabel('Loss')
         ax1.legend()
         ax1.grid(True)
-        
-        ax2.plot(epochs, self.train_historique['accuracy'], label="Train Accuracy", color='blue')
-        ax2.plot(epochs, self.valid_historique['accuracy'], label="Validation Accuracy", color='orange')
-        ax2.plot(epochs, self.valid_historique['f1'], label="Validation F1 score", color="red")
-        ax2.set_title('Training and Validation accuracy')
+
+        # subplot 2: metrics
+        for metric in self.metrics:
+            if metric in self.train_historique and metric in self.valid_historique:
+                ax2.plot(
+                    epochs,
+                    self.train_historique[metric],
+                    label=f"Train {metric.capitalize()}",
+                    color=metric_colors[metric],
+                    linestyle=train_style
+                )
+
+                if len(self.valid_historique[metric]) >= 1:
+                    ax2.plot(
+                        epochs,
+                        self.valid_historique[metric],
+                        label=f"Validation {metric.capitalize()}",
+                        color=metric_colors[metric],
+                        linestyle=val_style
+                    )
+
+        ax2.set_title('Training metrics')
+        if self.valid_historique['loss']:
+            ax2.set_title('Training and Validation metrics')
         ax2.set_xlabel('Epochs')
         ax2.set_ylabel('accuracy')
         ax2.legend()
@@ -255,7 +307,7 @@ class Model:
 
     
 
-# ml = Model([
+# ml = Model(
     # DenseLayer(10, 'ReLU'),
     # DenseLayer(10, 'ReLU', input_size=30),
     # DenseLayer(5, 'ReLU'),

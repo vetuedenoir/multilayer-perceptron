@@ -94,7 +94,8 @@ def train_model(X, Y):
     ])
 
     model.createWeigts(X_train)
-    model.compile("BinaryCrossentropy")
+    model.compile("BinaryCrossentropy",
+                  metrics=['f1', 'recall', 'accuracy'])
 
     model.summary()
 
