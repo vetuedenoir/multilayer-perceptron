@@ -1,7 +1,7 @@
-from model.layers import DenseLayer
-from model.losses import BinaryCrossentropy, CategoricalCrossentropy
-from model.activations import Sigmoid, Softmax
-from model.metrics import accuracy_score_ , precision_score_, recall_score_, f1_score_
+from mlp.layers import DenseLayer
+from mlp.losses import BinaryCrossentropy, CategoricalCrossentropy
+from mlp.activations import Sigmoid, Softmax
+from mlp.metrics import accuracy_score_ , precision_score_, recall_score_, f1_score_
 import numpy as np
 import json
 import matplotlib.pyplot as plt

@@ -1,5 +1,5 @@
 import numpy as np
-from model.activations import Sigmoid, ReLU, LeakyReLU, Softmax
+from mlp.activations import Sigmoid, ReLU, LeakyReLU, Softmax
 
 
 class DenseLayer:

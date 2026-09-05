@@ -3,8 +3,8 @@
 import argparse
 import numpy as np
 import pandas as pd
-from model.mlp import Model
-from model.layers import DenseLayer
+from mlp.network import Model
+from mlp.layers import DenseLayer
 
 
 def parse():
@@ -18,7 +18,7 @@ def  load_dataset(dataset: str):
     if data is None:
         raise RuntimeError(f"Cannot open the file {dataset}")
     # print(data.head())
-    # print(pd.DataFrame.describe(data))
+    # print(pd.DataFrame.describe(data)
     Y = data.iloc[:, 1].values
     X = data.iloc[:, 2:].values
 

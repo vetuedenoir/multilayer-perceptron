@@ -2,7 +2,6 @@ import numpy as np
 
 
 class Softmax:
-
     
     def forward(self, z):
         exp = np.exp(z - np.max(z, axis=1, keepdims=True))
