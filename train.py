@@ -93,7 +93,33 @@ def train_model(X, Y):
         DenseLayer(1, activation='Sigmoid')
     ])
 
-    model.createWeigts(X_train)
+
+    # model = Model([
+    #     DenseLayer(40, activation='ReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(120, activation='ReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(80, activation='ReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(1, activation='Softmax')
+    # ])
+
+    # model = Model((
+    #     DenseLayer(40, activation='LeakyReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(120, activation='LeakyReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(80, activation='LeakyReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(1, activation='Sigmoid')
+    # ))
+
+    # model = Model([
+    #     DenseLayer(40, activation='LeakyReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(120, activation='LeakyReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(80, activation='LeakyReLU', weights_initializer="glorotUniform")
+    # ])
+
+    # model.add(DenseLayer(1, activation='Sigmoid'))
+
+    # model.createWeigts(X_train)
+
+    # model.compile("CategoricalCrossentropy",
+    #               metrics=['f1', 'recall', 'accuracy'])
     model.compile("BinaryCrossentropy",
                   metrics=['f1', 'recall', 'accuracy'])
 
@@ -101,10 +127,11 @@ def train_model(X, Y):
 
     model.fit_(X_train, Y_train, 
                validation_X=X_validation, validation_Y=Y_validation,
-               epochs=50)
+               epochs=60)
 
     model.save_weigts_bias()
-    # model.plot_loss()
+    # model.printWeights()
+    model.plot_loss()
 
 
 def	main():

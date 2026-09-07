@@ -103,3 +103,9 @@ def f1_score_(y, y_pred, pos_label=1):
         return 0.0
     return (2 * precision * recall) / (precision + recall) 
 
+METRICS = {
+    "accuracy": accuracy_score_,
+    "precision": precision_score_,
+    "recall": recall_score_,
+    "f1": f1_score_
+}

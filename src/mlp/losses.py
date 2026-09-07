@@ -37,3 +37,9 @@ class CategoricalCrossentropy:
     
     def backward_X_Softmax(self, y, y_hat, eps=1e-15):
         return y_hat - y
+
+
+LOSSES = {
+    "BinaryCrossentropy": BinaryCrossentropy,
+    "CategoricalCrossentropy": CategoricalCrossentropy
+}

@@ -1,5 +1,8 @@
 import numpy as np
-from mlp.activations import Sigmoid, ReLU, LeakyReLU, Softmax
+from mlp.activations import Sigmoid, ReLU, LeakyReLU, Softmax, ACTIVATIONS
+from mlp.weights_initializer import WEIGHTS_INITIALIZERS
+from mlp.get_from_registry import get_from_registry
+
 
 
 class DenseLayer:
@@ -11,34 +14,8 @@ class DenseLayer:
         self.bias = np.empty((0)) # tableau numpy
         self.units = units
 
-        if activation == 'Sigmoid':
-            self.activation = Sigmoid
-        elif activation == 'ReLU':
-            self.activation = ReLU
-        elif activation == 'LeakyReLU':
-            self.activation = LeakyReLU
-        elif activation == 'Softmax':
-            self.activation = Softmax
-        else:
-            raise NameError("Received an Invalid name for 'activation', "
-                    "expected an str equal to 'Sigmoid', 'ReLU', 'LeakyReLU'"
-                    " or 'Softmax'.")
-        
-        if weights_initializer != '' and weights_initializer != 'zero' \
-            and weights_initializer != 'randomNormal' \
-            and weights_initializer != 'randomUniform' \
-            and weights_initializer != 'heUniform' \
-            and weights_initializer != 'heNormal' \
-            and weights_initializer != 'glorotUniform' \
-            and weights_initializer != 'glorotNormal':
-            raise NameError("Received an Invalid name for 'weights_initializer', "
-                    "expected an str equal to 'zero', 'randomNormal',"
-                    "'randomUniform', 'heUniform', 'heNormal', "
-                    "'glorotUniform' or 'glorotNormal ")
-        self.weights_initializer = weights_initializer
-        if weights_initializer == '':
-            self.weights_initializer = 'randomNormal'
-            
+        self.activation = get_from_registry(ACTIVATIONS, activation, "activation")
+        self.weights_initializer = get_from_registry(WEIGHTS_INITIALIZERS, weights_initializer, "weights_initializer")
 
 
     def init_weightBias(self, input_size: int):
@@ -46,29 +23,7 @@ class DenseLayer:
             raise ValueError("Received an Invalid value for 'input_size', "
                     "expected a positive integer.")
 
-        match self.weights_initializer:
-            case "zero":
-                self.weights = np.zeros((self.units, input_size))
-                # problem
-            case "randomNormal":
-                self.weights = np.random.normal(loc=0.0, scale=1.0, size=(self.units, input_size))
-            case "randomUniform":
-                self.weights = np.random.uniform(-1, 1, size=(self.units, input_size))
-            case "heUniform":
-                limit = np.sqrt(6 / input_size)
-                self.weights = np.random.uniform(-limit, limit, size=(self.units, input_size))
-            case "heNormal":
-                sigma =  np.sqrt(2 / input_size)
-                self.weights = np.random.normal(loc=0, scale=sigma, size=(self.units, input_size))
-            case "glorotUniform":
-                limit = np.sqrt(6 / (input_size + self.units))
-                self.weights = np.random.uniform(-limit, limit, size=(self.units, input_size))
-            case "glorotNormal":
-                sigma = np.sqrt(2 / (input_size + self.units))
-                self.weights = np.random.normal(loc=0, scale=sigma, size=(self.units, input_size))
-            case _:
-                self.weights = np.random.randn(self.units, input_size)
-
+        self.weights = self.weights_initializer(self.units, input_size)
         self.bias = np.zeros((1, self.units))
         
 

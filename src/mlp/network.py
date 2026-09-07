@@ -2,7 +2,7 @@
 from mlp.layers import DenseLayer
 from mlp.losses import BinaryCrossentropy, CategoricalCrossentropy
 from mlp.activations import Sigmoid, Softmax
-from mlp.metrics import accuracy_score_ , precision_score_, recall_score_, f1_score_
+from mlp.metrics import METRICS
 import numpy as np
 import json
 import matplotlib.pyplot as plt
@@ -18,12 +18,7 @@ class Model:
             self.loss = None
             self.backward_loss = None
             self.opti = False
-            self.metric_functions = {
-                'accuracy': accuracy_score_,
-                'precision': precision_score_,
-                'recall': recall_score_,
-                'f1': f1_score_
-            }
+            self.metric_functions = METRICS
             self.train_history = {'loss': []}
             self.valid_history = {'loss': []}
 
@@ -98,6 +93,7 @@ class Model:
 
     def fit_(self, x, y, epochs=100, learning_rate=0.001,  batch_size=128, validation_X=None, validation_Y=None):
 
+        self.createWeigts(x)
         self.epochs = epochs
         if self.loss is None:
             raise RuntimeError("Cannot fit the model if the loss function is not defined, "
@@ -116,6 +112,7 @@ class Model:
         if self.loss == CategoricalCrossentropy() and self.layers[-1].units != y.shape[1]:
             raise ValueError("Invalid shape for y, expected a shape of (m, n) " \
             "with n equal to the number of units in the last layer for CategoricalCrossentropy loss.")
+
 
         for ep in range(epochs):
             # --- Forward Pass (Training) ---
@@ -211,6 +208,14 @@ class Model:
             self.train_history[metric] = []
             self.valid_history[metric] = []
         self.metrics = metrics
+
+        #   self.metric_functions = get_from_registry(METRICS, metrics, "metrics")
+    
+        #     for metric in metrics:
+        #         self.train_history[metric] = []
+        #         self.valid_history[metric] = []
+        #     self.metrics = metrics
+    
 
 
     def save_weigts_bias(self):

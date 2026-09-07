@@ -41,3 +41,11 @@ class LeakyReLU:
     
     def backward(self, z):
         return np.where(z <= 0, 0.01, 1)
+
+
+ACTIVATIONS = {
+    "Sigmoid": Sigmoid,
+    "ReLU": ReLU,
+    "LeakyReLU": LeakyReLU,
+    "Softmax": Softmax
+}
