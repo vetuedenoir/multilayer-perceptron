@@ -5,7 +5,7 @@ from mlp.activations import Sigmoid, ReLU, LeakyReLU, Softmax
 class DenseLayer:
     def	__init__(self, units: int, activation: str, weights_initializer=''):
         if not isinstance(units, int) or units <= 0:
-            raise ValueError("Received an invalide value for 'units', "
+            raise ValueError("Received an Invalid value for 'units', "
             "expected a positive integer.")
         self.weights = np.empty((0)) # tableau numpy
         self.bias = np.empty((0)) # tableau numpy
@@ -20,7 +20,7 @@ class DenseLayer:
         elif activation == 'Softmax':
             self.activation = Softmax
         else:
-            raise NameError("Received an invalide name for 'activation', "
+            raise NameError("Received an Invalid name for 'activation', "
                     "expected an str equal to 'Sigmoid', 'ReLU', 'LeakyReLU'"
                     " or 'Softmax'.")
         
@@ -31,7 +31,7 @@ class DenseLayer:
             and weights_initializer != 'heNormal' \
             and weights_initializer != 'glorotUniform' \
             and weights_initializer != 'glorotNormal':
-            raise NameError("Received an invalide name for 'weights_initializer', "
+            raise NameError("Received an Invalid name for 'weights_initializer', "
                     "expected an str equal to 'zero', 'randomNormal',"
                     "'randomUniform', 'heUniform', 'heNormal', "
                     "'glorotUniform' or 'glorotNormal ")
@@ -43,7 +43,7 @@ class DenseLayer:
 
     def init_weightBias(self, input_size: int):
         if not isinstance(input_size, int) or input_size <= 0:
-            raise ValueError("Received an invalide value for 'input_size', "
+            raise ValueError("Received an Invalid value for 'input_size', "
                     "expected a positive integer.")
 
         match self.weights_initializer:

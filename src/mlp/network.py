@@ -1,3 +1,4 @@
+
 from mlp.layers import DenseLayer
 from mlp.losses import BinaryCrossentropy, CategoricalCrossentropy
 from mlp.activations import Sigmoid, Softmax
@@ -9,10 +10,10 @@ import matplotlib.pyplot as plt
 
 class Model:
     def __init__(self, layers=[]):
-            if not isinstance(layers, list):
-                raise TypeError("Invalide type, layers must be a list")
+            if not isinstance(layers, list) and not isinstance(layers, tuple):
+                raise TypeError("Invalid type, layers must be a list")
             if not all(isinstance(layer, DenseLayer) for layer in layers):
-                raise TypeError("Invalide type, elements in layers must be a DenseLayer")
+                raise TypeError("Invalid type, elements in layers must be a DenseLayer")
             self.layers = layers
             self.loss = None
             self.backward_loss = None
@@ -23,8 +24,8 @@ class Model:
                 'recall': recall_score_,
                 'f1': f1_score_
             }
-            self.train_historique = {'loss': []}
-            self.valid_historique = {'loss': []}
+            self.train_history = {'loss': []}
+            self.valid_history = {'loss': []}
 
     def createWeigts(self, X):
 
@@ -64,7 +65,7 @@ class Model:
 
     def add(self, layer):
         if not isinstance(layer, DenseLayer):
-                raise TypeError("Invalide type, layer must be a DenseLayer")
+                raise TypeError("Invalid type, layer must be a DenseLayer")
         self.layers.append(layer)
 
     def pop(self, pos=None):
@@ -75,7 +76,7 @@ class Model:
     def len(self):
         return len(self.layers)
 
-    def foward(self, x):
+    def forward(self, x):
         for layer in self.layers:
             x = layer.forward(x)
         return x
@@ -90,7 +91,7 @@ class Model:
             layer.update(alpha)
 
     def evaluate(self, validation_X, validation_Y):
-        y_pred = self.foward(validation_X)
+        y_pred = self.forward(validation_X)
         loss = self.loss.forward(validation_Y, y_pred)
 
 
@@ -101,23 +102,23 @@ class Model:
             raise RuntimeError("Cannot fit the model if the loss function is not defined, "
             "please use the compile method to define the loss function before fitting the model.")
         
-        if self.loss == BinaryCrossentropy and y.shape[1] != 1:
-            raise ValueError("Invalide shape for y, expected a shape of (m, 1) "
+        if self.loss == BinaryCrossentropy() and y.shape[1] != 1:
+            raise ValueError("Invalid shape for y, expected a shape of (m, 1) "
             "for BinaryCrossentropy loss.")
-        if self.loss == BinaryCrossentropy and self.layers[-1].units != 1:
-            raise ValueError("Invalide number of units in the last layer, " \
+        if self.loss == BinaryCrossentropy() and self.layers[-1].units != 1:
+            raise ValueError("Invalid number of units in the last layer, " \
             "expected 1 for BinaryCrossentropy loss.")
         
-        if self.loss == CategoricalCrossentropy and y.shape[1] <= 1:
-            raise ValueError("Invalide shape for y, expected a shape of (m, n) with n > 1 "
+        if self.loss == CategoricalCrossentropy() and y.shape[1] <= 1:
+            raise ValueError("Invalid shape for y, expected a shape of (m, n) with n > 1 "
             "for CategoricalCrossentropy loss.")
-        if self.loss == CategoricalCrossentropy and self.layers[-1].units != y.shape[1]:
-            raise ValueError("Invalide shape for y, expected a shape of (m, n) " \
+        if self.loss == CategoricalCrossentropy() and self.layers[-1].units != y.shape[1]:
+            raise ValueError("Invalid shape for y, expected a shape of (m, n) " \
             "with n equal to the number of units in the last layer for CategoricalCrossentropy loss.")
 
         for ep in range(epochs):
             # --- Forward Pass (Training) ---
-            y_pred = self.foward(x)
+            y_pred = self.forward(x)
             loss = self.loss.forward(y, y_pred)
 
             # --- Backward Pass ---
@@ -130,29 +131,29 @@ class Model:
             train_metrics = {}
             classified_pred_train = (y_pred >= 0.5).astype(int)
 
-            self.train_historique['loss'].append(loss)
+            self.train_history['loss'].append(loss)
 
             for metric_name, metric_func in self.metric_functions.items():
                 if metric_name in self.metrics:
                     metric_value = metric_func(y, classified_pred_train)
                     train_metrics[metric_name] = metric_value
-                    self.train_historique[metric_name].append(metric_value)
+                    self.train_history[metric_name].append(metric_value)
 
 
              # --- Calcul des métriques de validation ---
             valide_metrics = {}
             if validation_X is not None:
-                y_pred_valide = self.foward(validation_X)
+                y_pred_valide = self.forward(validation_X)
                 classified_pred_valide = (y_pred_valide >= 0.5).astype(int)
 
                 loss_valide = self.loss.forward(validation_Y, y_pred_valide)
-                self.valid_historique['loss'].append(loss_valide)
+                self.valid_history['loss'].append(loss_valide)
                 
                 for metric_name, metric_func in self.metric_functions.items():
                     if metric_name in self.metrics:
                         metric_value = metric_func(validation_Y, classified_pred_valide)
                         valide_metrics[metric_name] = metric_value
-                        self.valid_historique[metric_name].append(metric_value)
+                        self.valid_history[metric_name].append(metric_value)
 
             self._print_metrics(ep, train_metrics, valide_metrics)
 
@@ -175,7 +176,7 @@ class Model:
     def compile(self, loss, metrics=['accuracy']):
 
         if self.layers[-1].activation == Softmax and loss == "BinaryCrossentropy":
-            raise ValueError("Invalide combination of loss function and activation function in the last layer, "
+            raise ValueError("Invalid combination of loss function and activation function in the last layer, "
             "Softmax activation is not compatible with BinaryCrossentropy loss.")
 
         if loss == "BinaryCrossentropy":
@@ -193,7 +194,7 @@ class Model:
             else:
                 self.backward_loss = self.loss.backward
         else:
-            raise NameError("Received an invalide name for 'loss', "
+            raise NameError("Received an Invalid name for 'loss', "
                     "expected an str equal to 'BinaryCrossentropy' or 'CategoricalCrossentropy'.")
         
         for i in range(len(self.layers)):
@@ -206,8 +207,8 @@ class Model:
                     f"Metric '{metric}' is not supported. "
                     f"Valid metrics are: {valid_metrics}."
                 )
-            self.train_historique[metric] = []
-            self.valid_historique[metric] = []
+            self.train_history[metric] = []
+            self.valid_history[metric] = []
         self.metrics = metrics
 
 
@@ -265,13 +266,13 @@ class Model:
         train_style = '-'
         val_style = '--'
 
-        epochs = range(1, 1 + len((self.train_historique['loss'])))
+        epochs = range(1, 1 + len((self.train_history['loss'])))
         # subplot 1: Loss
-        ax1.plot(epochs, self.train_historique['loss'], label='Train Loss',
+        ax1.plot(epochs, self.train_history['loss'], label='Train Loss',
                  color='royalblue', linestyle=train_style)
         ax1.set_title('Training Loss')
-        if self.valid_historique['loss']:
-            ax1.plot(epochs, self.valid_historique['loss'], label='Validation Loss',
+        if self.valid_history['loss']:
+            ax1.plot(epochs, self.valid_history['loss'], label='Validation Loss',
                      color=metric_colors['loss'], linestyle=val_style)
             ax1.set_title('Training and Validation Loss')
         ax1.set_xlabel('Epochs')
@@ -281,26 +282,26 @@ class Model:
 
         # subplot 2: metrics
         for metric in self.metrics:
-            if metric in self.train_historique and metric in self.valid_historique:
+            if metric in self.train_history and metric in self.valid_history:
                 ax2.plot(
                     epochs,
-                    self.train_historique[metric],
+                    self.train_history[metric],
                     label=f"Train {metric.capitalize()}",
                     color=metric_colors[metric],
                     linestyle=train_style
                 )
 
-                if len(self.valid_historique[metric]) >= 1:
+                if len(self.valid_history[metric]) >= 1:
                     ax2.plot(
                         epochs,
-                        self.valid_historique[metric],
+                        self.valid_history[metric],
                         label=f"Validation {metric.capitalize()}",
                         color=metric_colors[metric],
                         linestyle=val_style
                     )
 
         ax2.set_title('Training metrics')
-        if self.valid_historique['loss']:
+        if self.valid_history['loss']:
             ax2.set_title('Training and Validation metrics')
         ax2.set_xlabel('Epochs')
         ax2.set_ylabel('accuracy')
