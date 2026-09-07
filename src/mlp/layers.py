@@ -10,8 +10,8 @@ class DenseLayer:
         if not isinstance(units, int) or units <= 0:
             raise ValueError("Received an Invalid value for 'units', "
             "expected a positive integer.")
-        self.weights = np.empty((0)) # tableau numpy
-        self.bias = np.empty((0)) # tableau numpy
+        self.weights = np.empty((0))
+        self.bias = np.empty((0))
         self.units = units
 
         self.activation = get_from_registry(ACTIVATIONS, activation, "activation")

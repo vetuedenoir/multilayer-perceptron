@@ -8,13 +8,32 @@ import json
 import matplotlib.pyplot as plt
 
 
+def iter_batches(X, y, batch_size, shuffle=True):
+    """Yield (X_batch, y_batch) pairs covering the whole dataset once.
+
+    The last batch is smaller when the dataset size is not a multiple of
+    batch_size. Shuffling is done per call, so each epoch sees a different
+    partition of the samples.
+    """
+    m = X.shape[0]
+    indices = np.random.permutation(m) if shuffle else np.arange(m)
+
+    for start in range(0, m, batch_size):
+        batch = indices[start:start + batch_size]
+        yield X[batch], y[batch]
+
+
 class Model:
-    def __init__(self, layers=[]):
+    def __init__(self, layers=None):
+            if layers is None:
+                layers = []
             if not isinstance(layers, list) and not isinstance(layers, tuple):
                 raise TypeError("Invalid type, layers must be a list")
             if not all(isinstance(layer, DenseLayer) for layer in layers):
                 raise TypeError("Invalid type, elements in layers must be a DenseLayer")
-            self.layers = layers
+            # copied: a caller keeping a reference to its list must not be able
+            # to mutate the model through it
+            self.layers = list(layers)
             self.loss = None
             self.backward_loss = None
             self.opti = False
@@ -28,13 +47,14 @@ class Model:
 
         if len(self.layers) == 0:
             raise RuntimeError("Cannot create the weigths if the model is empty")
-        if (self.layers[0].weights.size == 0):
+        if self.layers[0].weights.size == 0:
             self.layers[0].init_weightBias(input_size)
         # Nombre de poids=(Nombre de neurones dans la couche d'entre`e+1)
         # x
         # Nombre de neurones dans le premier layer cache
         for i in range(1, len(self.layers)):
-            self.layers[i].init_weightBias(self.layers[i - 1].units)
+            if self.layers[i].weights.size == 0:
+                self.layers[i].init_weightBias(self.layers[i - 1].units)
 
     def printWeights(self):
         for layer in self.layers:
@@ -85,10 +105,30 @@ class Model:
         for layer in self.layers:
             layer.update(alpha)
 
-    def evaluate(self, validation_X, validation_Y):
-        y_pred = self.forward(validation_X)
-        loss = self.loss.forward(validation_Y, y_pred)
-        return loss
+    def predict_classes(self, y_pred):
+        """Turn network outputs into 1D class labels.
+
+        One output column is a binary probability, thresholded at 0.5. Several
+        columns are a probability distribution, so the class is the argmax.
+        The metrics work on these labels, never on the raw output matrix.
+        """
+        if y_pred.shape[1] == 1:
+            return (y_pred >= 0.5).astype(int).ravel()
+        return np.argmax(y_pred, axis=1)
+
+    def evaluate(self, X, y):
+        """Run a forward pass and return (loss, {metric_name: value})."""
+        y_pred = self.forward(X)
+        loss = self.loss.forward(y, y_pred)
+
+        classified_pred = self.predict_classes(y_pred)
+        classified_true = self.predict_classes(y)
+        metrics = {}
+        for metric_name in self.metrics:
+            metrics[metric_name] = self.metric_functions[metric_name](classified_true,
+                                                                      classified_pred)
+
+        return loss, metrics
 
 
     def fit_(self, x, y, epochs=100, learning_rate=0.001,  batch_size=128, validation_X=None, validation_Y=None):
@@ -98,62 +138,49 @@ class Model:
         if self.loss is None:
             raise RuntimeError("Cannot fit the model if the loss function is not defined, "
             "please use the compile method to define the loss function before fitting the model.")
-        
-        if self.loss == BinaryCrossentropy() and y.shape[1] != 1:
+
+        if not isinstance(batch_size, int) or batch_size <= 0:
+            raise ValueError("Received an Invalid value for 'batch_size', "
+            "expected a positive integer.")
+
+        if isinstance(self.loss, BinaryCrossentropy) and y.shape[1] != 1:
             raise ValueError("Invalid shape for y, expected a shape of (m, 1) "
             "for BinaryCrossentropy loss.")
-        if self.loss == BinaryCrossentropy() and self.layers[-1].units != 1:
+        if isinstance(self.loss, BinaryCrossentropy) and self.layers[-1].units != 1:
             raise ValueError("Invalid number of units in the last layer, " \
             "expected 1 for BinaryCrossentropy loss.")
-        
-        if self.loss == CategoricalCrossentropy() and y.shape[1] <= 1:
+
+        if isinstance(self.loss, CategoricalCrossentropy) and y.shape[1] <= 1:
             raise ValueError("Invalid shape for y, expected a shape of (m, n) with n > 1 "
             "for CategoricalCrossentropy loss.")
-        if self.loss == CategoricalCrossentropy() and self.layers[-1].units != y.shape[1]:
+        if isinstance(self.loss, CategoricalCrossentropy) and self.layers[-1].units != y.shape[1]:
             raise ValueError("Invalid shape for y, expected a shape of (m, n) " \
             "with n equal to the number of units in the last layer for CategoricalCrossentropy loss.")
 
 
         for ep in range(epochs):
-            # --- Forward Pass (Training) ---
-            y_pred = self.forward(x)
-            loss = self.loss.forward(y, y_pred)
+            for x_batch, y_batch in iter_batches(x, y, batch_size):
+                y_pred = self.forward(x_batch)
 
-            # --- Backward Pass ---
-            dA = self.backward_loss(y, y_pred)
-            self.backward(dA, from_loss=self.opti)     
-            self.update(learning_rate)
+                dA = self.backward_loss(y_batch, y_pred)
+                self.backward(dA, from_loss=self.opti)
+                self.update(learning_rate)
 
 
-            # --- Calcul des métriques de training ---
-            train_metrics = {}
-            classified_pred_train = (y_pred >= 0.5).astype(int)
-
+            loss, train_metrics = self.evaluate(x, y)
             self.train_history['loss'].append(loss)
+            for metric_name, metric_value in train_metrics.items():
+                self.train_history[metric_name].append(metric_value)
 
-            for metric_name, metric_func in self.metric_functions.items():
-                if metric_name in self.metrics:
-                    metric_value = metric_func(y, classified_pred_train)
-                    train_metrics[metric_name] = metric_value
-                    self.train_history[metric_name].append(metric_value)
-
-
-             # --- Calcul des métriques de validation ---
-            valide_metrics = {}
+            valide_metrics = None
             if validation_X is not None:
-                y_pred_valide = self.forward(validation_X)
-                classified_pred_valide = (y_pred_valide >= 0.5).astype(int)
-
-                loss_valide = self.loss.forward(validation_Y, y_pred_valide)
+                loss_valide, valide_metrics = self.evaluate(validation_X, validation_Y)
                 self.valid_history['loss'].append(loss_valide)
-                
-                for metric_name, metric_func in self.metric_functions.items():
-                    if metric_name in self.metrics:
-                        metric_value = metric_func(validation_Y, classified_pred_valide)
-                        valide_metrics[metric_name] = metric_value
-                        self.valid_history[metric_name].append(metric_value)
+                for metric_name, metric_value in valide_metrics.items():
+                    self.valid_history[metric_name].append(metric_value)
+                valide_metrics = {'loss': loss_valide, **valide_metrics}
 
-            self._print_metrics(ep, train_metrics, valide_metrics)
+            self._print_metrics(ep, {'loss': loss, **train_metrics}, valide_metrics)
 
 
     def _print_metrics(self, epoch, metrics_train, metrics_validation=None):
@@ -176,6 +203,11 @@ class Model:
         if self.layers[-1].activation == Softmax and loss == "BinaryCrossentropy":
             raise ValueError("Invalid combination of loss function and activation function in the last layer, "
             "Softmax activation is not compatible with BinaryCrossentropy loss.")
+
+        if self.layers[-1].activation == Softmax and self.layers[-1].units == 1:
+            raise ValueError("Invalid number of units in the last layer, "
+            "Softmax needs at least 2 units (it outputs a probability distribution "
+            "over the units of the layer).")
 
         if loss == "BinaryCrossentropy":
             self.loss = BinaryCrossentropy()
