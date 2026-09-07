@@ -36,8 +36,8 @@ class DenseLayer:
     def backward(self, dA, from_loss=False):
         if from_loss is True:
             dZ = dA
-        else:    
-            dZ = dA * self.activation.backward(self.z)
+        else:
+            dZ = self.activation.backward(self.z, dA)
         m = self.input.shape[0]
         self.dW = (dZ.T @ self.input) / m
         self.db = np.sum(dZ, axis=0, keepdims=True) / m
