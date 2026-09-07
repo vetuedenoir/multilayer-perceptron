@@ -173,6 +173,11 @@ class Model:
 
 
     def compile(self, loss, metrics=['accuracy']):
+
+        if self.layers[-1].activation == Softmax and loss == "BinaryCrossentropy":
+            raise ValueError("Invalide combination of loss function and activation function in the last layer, "
+            "Softmax activation is not compatible with BinaryCrossentropy loss.")
+
         if loss == "BinaryCrossentropy":
             self.loss = BinaryCrossentropy()
             if self.layers[-1].activation == Sigmoid:
