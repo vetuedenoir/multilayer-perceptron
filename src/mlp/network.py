@@ -93,6 +93,7 @@ class Model:
     def evaluate(self, validation_X, validation_Y):
         y_pred = self.forward(validation_X)
         loss = self.loss.forward(validation_Y, y_pred)
+        return loss
 
 
     def fit_(self, x, y, epochs=100, learning_rate=0.001,  batch_size=128, validation_X=None, validation_Y=None):

@@ -18,6 +18,8 @@ def accuracy_score_(y, y_pred):
     for itrue, ipred in zip(y, y_pred): 
         if itrue == ipred:
             correct_classification += 1
+    if len(y) == 0:
+        return 0.0
     return correct_classification / len(y)
 
 
@@ -44,8 +46,11 @@ def precision_score_(y, y_pred, pos_label=1):
                 true_positif += 1
             else:
                 false_positif += 1
-    
-    return true_positif / (true_positif + false_positif + 0.0000000001)
+
+
+    if true_positif + false_positif == 0:
+        return 0.0
+    return   true_positif / (true_positif + false_positif)
 
 
 
@@ -72,6 +77,8 @@ def recall_score_(y, y_pred, pos_label=1):
             if itrue == ipred:
                 true_positif += 1
 
+    if total_positif == 0:
+        return 0.0
     return true_positif / total_positif
 
 
@@ -92,5 +99,7 @@ def f1_score_(y, y_pred, pos_label=1):
     precision = precision_score_(y, y_pred)
     recall = recall_score_(y, y_pred)
 
-    return (2 * precision * recall) / (precision + recall + 0.00000001) 
+    if precision + recall == 0:
+        return 0.0
+    return (2 * precision * recall) / (precision + recall) 
 
