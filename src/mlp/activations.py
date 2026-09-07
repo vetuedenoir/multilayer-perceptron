@@ -40,4 +40,4 @@ class LeakyReLU:
         return np.where(z <= 0, 0.01 * z, z)
     
     def backward(self, z):
-        return np.where(z <= 0, 0.01, z)
+        return np.where(z <= 0, 0.01, 1)
