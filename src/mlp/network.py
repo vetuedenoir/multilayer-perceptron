@@ -34,17 +34,17 @@ class Model:
             raise RuntimeError("Cannot create the weigths if the model is empty")
         if (self.layers[0].weights.size == 0):
             self.layers[0].init_weightBias(input_size)
-        # Nombre de poids=(Nombre de neurones dans la couche d’entreˊe+1)
-        # ×
-        # Nombre de neurones dans le premier layer cache
+        # Nombre de poids=(Nombre de neurones dans la couche d'entre`e+1)
+        # x
+        # Nombre de neurones dans le premier layer cache
         for i in range(1, len(self.layers)):
             self.layers[i].init_weightBias(self.layers[i - 1].units)
 
-    def printWeight(self):
+    def printWeights(self):
         for layer in self.layers:
             print(layer)
             print("Weights")
-            print(layer.weight)
+            print(layer.weights)
             print("Bias")
             print(layer.bias)
             print()
@@ -209,26 +209,26 @@ class Model:
     def save_weigts_bias(self):
         models_WeightsBias = {}
         for layer, i in zip(self.layers, range(len(self.layers))):
-            layerWB = {"wheights": layer.weight.tolist(),
+            layerWB = {"wheights": layer.weights.tolist(),
                        "bias": layer.bias.tolist()
                        }
             models_WeightsBias["layers" + str(i)] = layerWB
         try:
-            file = "weight.json"
+            file = "weights.json"
             with open(file, "w") as file:
                 json.dump(models_WeightsBias, file, indent=2)
         except IOError as e:
             print(f"Error: cannot write in file: {e}")
 
-    def load_weight_bias(self, path: str):
+    def load_weights_bias(self, path: str):
         try:
             with open(path, 'r') as file:
                 dic_wb = {layer: wb for layer, wb in json.load(file).items()}
             for layer, i in zip(self.layers, range(len(self.layers))):
-                layer.weight = np.array(dic_wb["layers" + str(i)]["wheights"])
+                layer.weights = np.array(dic_wb["layers" + str(i)]["wheights"])
                 layer.bias = np.array(dic_wb["layers" + str(i)]["bias"])
 
-                x, y = self.layers[i].weight.shape
+                x, y = self.layers[i].weights.shape
 
                 if self.layers[i].units != x:
                     raise ValueError(f"The number of weights dont feat the number" \
@@ -322,7 +322,7 @@ class Model:
 # ml.printWeight()
 # ml.summary()
 # ml.save_weigts_bias()
-# ml.load_weight_bias("weight.json")
+# ml.load_weight_bias("weights.json")
 # ml.summary()
 # ml.printWeight()
 

@@ -101,8 +101,10 @@ def train_model(X, Y):
 
     model.fit_(X_train, Y_train, 
                validation_X=X_validation, validation_Y=Y_validation,
-               epochs=100)
-    model.plot_loss()
+               epochs=50)
+
+    model.save_weigts_bias()
+    # model.plot_loss()
 
 
 def	main():
