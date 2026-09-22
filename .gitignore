@@ -3,3 +3,8 @@ __pycache__
 */__pycache__
 weights.json
 .venv
+.mypy_cache
+.pytest_cache
+model.json
+data_train.csv
+data_valid.csv

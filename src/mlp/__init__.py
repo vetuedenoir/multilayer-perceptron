@@ -1,6 +1,15 @@
 """Multilayer perceptron implemented from scratch on numpy."""
 
 from mlp.activations import ACTIVATIONS, Activation
+from mlp.errors import (
+    ConfigurationError,
+    DatasetError,
+    MLPError,
+    ModelFileError,
+    NotBuiltError,
+    ShapeError,
+    TrainingDivergedError,
+)
 from mlp.history import History
 from mlp.initializers import INITIALIZERS, Initializer
 from mlp.layers import LAYERS, DenseLayer, Layer, LayerConfig
@@ -46,4 +55,11 @@ __all__ = [
     "LoadedModel",
     "save_model",
     "load_model",
+    "MLPError",
+    "ConfigurationError",
+    "ShapeError",
+    "NotBuiltError",
+    "TrainingDivergedError",
+    "DatasetError",
+    "ModelFileError",
 ]
