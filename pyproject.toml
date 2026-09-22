@@ -30,8 +30,9 @@ strict = true
 # 3.12 and not 3.10: the numpy stubs use `type` statements, which mypy
 # refuses to parse when targeting an older version.
 python_version = "3.12"
-# split.py and explore.py join this list once they exist (step 5).
-files = ["src", "tests", "train.py", "predict.py"]
+files = ["src", "tests", "split.py", "train.py", "predict.py", "explore.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Lets the tests import the programs of the root (split, train, ...).
+pythonpath = ["."]

@@ -1,4 +1,4 @@
-"""Reading and splitting the dataset: the only module importing pandas.
+"""Dataset reading, splitting and writing: the only module importing pandas.
 
 The CSV has no header. Each row is an id, a diagnosis (``"B"`` or
 ``"M"``) and :data:`N_FEATURES` numeric features. :func:`read_dataset`
@@ -86,6 +86,20 @@ def to_arrays(df: pd.DataFrame) -> tuple[FloatArray, IntArray]:
     return x, y
 
 
+def write_dataset(df: pd.DataFrame, path: StrPath) -> None:
+    """Write `df` to `path` in the layout :func:`read_dataset` expects.
+
+    No header and no index, like the original file, so that a written
+    subset can be read back as any other dataset.
+
+    Raise DatasetError when the file cannot be written.
+    """
+    try:
+        df.to_csv(path, header=False, index=False)
+    except OSError as e:
+        raise DatasetError(f"cannot write {str(path)!r}: {e}") from e
+
+
 def split_dataset(
     n_rows: int,
     ratio: float,
@@ -119,5 +133,6 @@ __all__ = [
     "LABELS",
     "read_dataset",
     "to_arrays",
+    "write_dataset",
     "split_dataset",
 ]
