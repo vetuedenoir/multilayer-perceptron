@@ -6,6 +6,9 @@ import pandas as pd
 from mlp.network import Model
 from mlp.layers import DenseLayer
 from mlp.plotting import plot_history
+from mlp.data import LABELS
+from mlp.preprocessing import Scaler
+from mlp.serialization import save_model
 
 
 def parse():
@@ -131,7 +134,11 @@ def train_model(X, Y):
                         validation_data=(X_validation, Y_validation),
                         epochs=60, batch_size=8, seed=14)
 
-    model.save_weigts_bias()
+    # Temporary bridge until step 5: the scaler is still fitted on the
+    # whole dataset by load_dataset, so an identity one is stored.
+    identity = Scaler("standard", np.zeros(X.shape[1]), np.ones(X.shape[1]))
+    save_model("model.json", model, identity, list(LABELS),
+               {"epochs": 60, "batch_size": 8, "seed": 14})
     return history
 
 

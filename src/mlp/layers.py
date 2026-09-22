@@ -10,7 +10,16 @@ protocol: adding a new kind of layer (dropout, batch normalization...)
 does not touch the model.
 """
 
-from typing import Protocol, Sequence, TypedDict, runtime_checkable
+from typing import (
+    Callable,
+    Final,
+    Mapping,
+    Protocol,
+    Sequence,
+    TypeAlias,
+    TypedDict,
+    runtime_checkable,
+)
 
 import numpy as np
 
@@ -239,6 +248,12 @@ class DenseLayer:
             "initializer": self.initializer_name,
         }
 
+    @classmethod
+    def from_config(cls, config: LayerConfig) -> "DenseLayer":
+        """Build an unbuilt layer from the output of get_config()."""
+        return cls(config["units"], config["activation"],
+                   config["initializer"])
+
     def __repr__(self) -> str:
         """Return a constructor-like representation."""
         return (
@@ -248,9 +263,19 @@ class DenseLayer:
         )
 
 
+LayerFactory: TypeAlias = Callable[[LayerConfig], Layer]
+"""Build an unbuilt layer from its configuration."""
+
+LAYERS: Final[Mapping[str, LayerFactory]] = {
+    "dense": DenseLayer.from_config,
+}
+
+
 __all__ = [
     "LayerConfig",
     "Layer",
+    "LayerFactory",
+    "LAYERS",
     "DenseLayer",
     "dense_forward",
     "dense_backward",

@@ -1,5 +1,6 @@
-"""Array type aliases shared by every module of the library."""
+"""Type aliases shared by every module of the library."""
 
+import os
 from typing import TypeAlias
 
 import numpy as np
@@ -7,5 +8,6 @@ import numpy.typing as npt
 
 FloatArray: TypeAlias = npt.NDArray[np.float64]
 IntArray: TypeAlias = npt.NDArray[np.int64]
+StrPath: TypeAlias = str | os.PathLike[str]
 
-__all__ = ["FloatArray", "IntArray"]
+__all__ = ["FloatArray", "IntArray", "StrPath"]

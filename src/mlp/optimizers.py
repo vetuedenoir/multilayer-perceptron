@@ -17,6 +17,7 @@ from typing import (
     Protocol,
     Sequence,
     TypeAlias,
+    TypedDict,
 )
 
 from mlp.errors import ConfigurationError
@@ -35,6 +36,13 @@ def sgd_step(
     return [p - learning_rate * g for p, g in zip(params, grads)]
 
 
+class OptimizerConfig(TypedDict):
+    """Everything needed to rebuild an optimizer from its registry."""
+
+    name: str
+    learning_rate: float
+
+
 class Optimizer(Protocol):
     """Turn parameters and their gradients into updated parameters."""
 
@@ -46,6 +54,10 @@ class Optimizer(Protocol):
         grads: Sequence[FloatArray],
     ) -> list[FloatArray]:
         """Return the updated parameters."""
+        ...
+
+    def get_config(self) -> OptimizerConfig:
+        """Return the configuration needed to rebuild the optimizer."""
         ...
 
 
@@ -72,6 +84,10 @@ class SGD:
         """Return the updated parameters."""
         return sgd_step(params, grads, self.learning_rate)
 
+    def get_config(self) -> OptimizerConfig:
+        """Return the name and the learning rate."""
+        return {"name": self.name, "learning_rate": self.learning_rate}
+
 
 OptimizerFactory: TypeAlias = Callable[[float], Optimizer]
 """Build an optimizer from its learning rate."""
@@ -81,4 +97,11 @@ OPTIMIZERS: Final[Mapping[str, OptimizerFactory]] = {
     "SGD": SGD,
 }
 
-__all__ = ["sgd_step", "Optimizer", "OptimizerFactory", "SGD", "OPTIMIZERS"]
+__all__ = [
+    "sgd_step",
+    "Optimizer",
+    "OptimizerConfig",
+    "OptimizerFactory",
+    "SGD",
+    "OPTIMIZERS",
+]

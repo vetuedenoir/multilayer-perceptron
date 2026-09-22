@@ -6,14 +6,12 @@ through the :class:`~mlp.optimizers.Optimizer` protocol. Everything that
 can be computed without state lives in module level pure functions.
 """
 
-import json
-from typing import Iterable, Iterator, Mapping, Sequence
+from typing import Iterable, Iterator, Mapping, Sequence, TypedDict
 
 import numpy as np
 
 from mlp.errors import (
     ConfigurationError,
-    ModelFileError,
     NotBuiltError,
     ShapeError,
     TrainingDivergedError,
@@ -22,9 +20,17 @@ from mlp.history import History
 from mlp.layers import Layer
 from mlp.losses import LOSSES, GradFn, Loss, resolve_output_grad
 from mlp.metrics import METRICS, MetricFn
-from mlp.optimizers import OPTIMIZERS, Optimizer
+from mlp.optimizers import OPTIMIZERS, Optimizer, OptimizerConfig
 from mlp.registry import get_from_registry, get_many_from_registry
 from mlp.types import FloatArray, IntArray
+
+
+class CompileConfig(TypedDict):
+    """The arguments of compile(), in a serializable form."""
+
+    loss: str
+    optimizer: OptimizerConfig
+    metrics: list[str]
 
 
 def _check_positive_int(value: int, name: str) -> None:
@@ -172,6 +178,29 @@ class Model:
     def metrics(self) -> list[str]:
         """Return the names of the metrics given to compile()."""
         return list(self._metrics)
+
+    @property
+    def input_size(self) -> int:
+        """Return the number of features the model expects.
+
+        Raise NotBuiltError when the model is not built yet.
+        """
+        if not self.built:
+            raise NotBuiltError(
+                "the model must be built before its input size is known")
+        return int(self.layers[0].params()[0].shape[1])
+
+    def get_compile_config(self) -> CompileConfig:
+        """Return the loss, optimizer and metrics given to compile().
+
+        Raise NotBuiltError when the model is not compiled.
+        """
+        loss, optimizer = self._require_compiled()
+        return {
+            "loss": loss.name,
+            "optimizer": optimizer.get_config(),
+            "metrics": self.metrics,
+        }
 
     def build(self, input_size: int, seed: int | None = None) -> None:
         """Allocate the parameters of the layers that do not have any.
@@ -402,46 +431,10 @@ class Model:
                 f"{x.shape[0]} and {y.shape[0]}"
             )
 
-    def save_weigts_bias(self, path: str = "weights.json") -> None:
-        """Write the weights and biases of every layer to `path`."""
-        content = {
-            f"layers{i}": {"wheights": W.tolist(), "bias": b.tolist()}
-            for i, (W, b) in enumerate(lay.params() for lay in self.layers)
-        }
-        try:
-            with open(path, "w") as file:
-                json.dump(content, file, indent=2)
-        except OSError as e:
-            raise ModelFileError(f"cannot write {path!r}: {e}") from e
-
-    def load_weights_bias(self, path: str) -> None:
-        """Load into the layers the weights written by save_weigts_bias."""
-        try:
-            with open(path) as file:
-                content = json.load(file)
-            params = [
-                (np.array(content[f"layers{i}"]["wheights"]),
-                 np.array(content[f"layers{i}"]["bias"]))
-                for i in range(len(self.layers))
-            ]
-        except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
-            raise ModelFileError(f"cannot read {path!r}: {e!r}") from e
-        for i, (layer, (W, b)) in enumerate(zip(self.layers, params)):
-            if i > 0:
-                previous_units = self.layers[i - 1].get_config()["units"]
-                if W.ndim != 2 or W.shape[1] != previous_units:
-                    raise ModelFileError(
-                        f"expected weights with {previous_units} columns "
-                        f"in layer {i}, received shape {W.shape}"
-                    )
-            try:
-                layer.set_params([W, b])
-            except ShapeError as e:
-                raise ModelFileError(f"layer {i}: {e}") from e
-
 
 __all__ = [
     "Model",
+    "CompileConfig",
     "iter_batches",
     "to_class_labels",
     "check_targets",

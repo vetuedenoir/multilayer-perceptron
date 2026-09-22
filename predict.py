@@ -2,27 +2,20 @@
 
 
 import argparse
-from mlp.network import Model
-from mlp.layers import DenseLayer
+from mlp.serialization import load_model
 
 
 def parse():
     parser = argparse.ArgumentParser(prog="predict.py")
-    parser.add_argument("-w", "--weights", help="The Weights of the model")
+    parser.add_argument("-m", "--model", default="model.json",
+                        help="The model file written by train.py")
     return parser.parse_args()
 
 
 def	main():
     args = parse()
-    model = Model(([
-        DenseLayer(40, activation='ReLU', weights_initializer="glorotUniform"),
-        DenseLayer(120, activation='ReLU', weights_initializer="glorotUniform"),
-        DenseLayer(80, activation='ReLU', weights_initializer="glorotUniform"),
-        DenseLayer(1, activation='Sigmoid')
-    ]))
-
-    model.load_weights_bias(args.weights)
-    print(model.summary())
+    loaded = load_model(args.model)
+    print(loaded.model.summary())
 
 
 if __name__ == "__main__":
