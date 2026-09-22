@@ -10,7 +10,14 @@ Adding Adam therefore means adding a class in this module and a key in
 """
 
 from dataclasses import dataclass
-from typing import Final, Mapping, Protocol, Sequence
+from typing import (
+    Callable,
+    Final,
+    Mapping,
+    Protocol,
+    Sequence,
+    TypeAlias,
+)
 
 from mlp.errors import ConfigurationError
 from mlp.types import FloatArray
@@ -66,9 +73,12 @@ class SGD:
         return sgd_step(params, grads, self.learning_rate)
 
 
-OPTIMIZERS: Final[Mapping[str, type[Optimizer]]] = {
+OptimizerFactory: TypeAlias = Callable[[float], Optimizer]
+"""Build an optimizer from its learning rate."""
+
+OPTIMIZERS: Final[Mapping[str, OptimizerFactory]] = {
     "sgd": SGD,
     "SGD": SGD,
 }
 
-__all__ = ["sgd_step", "Optimizer", "SGD", "OPTIMIZERS"]
+__all__ = ["sgd_step", "Optimizer", "OptimizerFactory", "SGD", "OPTIMIZERS"]

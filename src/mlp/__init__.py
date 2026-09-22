@@ -1,8 +1,9 @@
 """Multilayer perceptron implemented from scratch on numpy."""
 
 from mlp.activations import ACTIVATIONS, Activation
+from mlp.history import History
 from mlp.initializers import INITIALIZERS, Initializer
-from mlp.layers import DenseLayer
+from mlp.layers import DenseLayer, Layer, LayerConfig
 from mlp.losses import LOSSES, Loss, resolve_output_grad
 from mlp.metrics import (
     METRICS,
@@ -16,6 +17,9 @@ from mlp.optimizers import OPTIMIZERS, SGD, Optimizer
 
 __all__ = [
     "Model",
+    "History",
+    "Layer",
+    "LayerConfig",
     "DenseLayer",
     "Activation",
     "ACTIVATIONS",

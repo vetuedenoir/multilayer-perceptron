@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from mlp.network import Model
 from mlp.layers import DenseLayer
+from mlp.plotting import plot_history
 
 
 def parse():
@@ -123,21 +124,23 @@ def train_model(X, Y):
     model.compile("BinaryCrossentropy",
                   metrics=['f1', 'recall', 'accuracy'])
 
-    model.summary()
+    model.build(X_train.shape[1], seed=14)
+    print(model.summary())
 
-    model.fit_(X_train, Y_train,
-               validation_X=X_validation, validation_Y=Y_validation,
-               epochs=60, batch_size=8)
+    history = model.fit(X_train, Y_train,
+                        validation_data=(X_validation, Y_validation),
+                        epochs=60, batch_size=8, seed=14)
 
     model.save_weigts_bias()
-    # model.printWeights()
-    model.plot_loss()
+    return history
 
 
 def	main():
     args = parse()
     X, Y = load_dataset(args.dataset)
-    train_model(X, Y)
+    history = train_model(X, Y)
+    if args.plot:
+        plot_history(history)
 
 
 if __name__ == "__main__":

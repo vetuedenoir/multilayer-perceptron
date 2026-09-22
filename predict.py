@@ -22,7 +22,7 @@ def	main():
     ]))
 
     model.load_weights_bias(args.weights)
-    model.printWeights()
+    print(model.summary())
 
 
 if __name__ == "__main__":
