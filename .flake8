@@ -1,0 +1,4 @@
+[flake8]
+max-line-length = 79
+docstring-convention = pep257
+exclude = .venv,.pvenv,__pycache__,.git,.mypy_cache,.pytest_cache

@@ -1,7 +1,7 @@
 import numpy as np
 from mlp.activations import Sigmoid, ReLU, LeakyReLU, Softmax, ACTIVATIONS
 from mlp.weights_initializer import WEIGHTS_INITIALIZERS
-from mlp.get_from_registry import get_from_registry
+from mlp.registry import get_from_registry
 
 
 

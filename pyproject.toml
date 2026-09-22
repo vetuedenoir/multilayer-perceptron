@@ -6,7 +6,16 @@ requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.10",
     "numpy>=2.2",
-    "pandas>=2.3,<3",
+    "pandas>=2.3",
+]
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "flake8",
+    "flake8-docstrings",
+    "pytest",
+    "pandas-stubs",
 ]
 
 [build-system]
@@ -15,3 +24,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mlp"]
+
+[tool.mypy]
+strict = true
+# 3.12 and not 3.10: the numpy stubs use `type` statements, which mypy
+# refuses to parse when targeting an older version.
+python_version = "3.12"
+# split.py, explore.py and tests/ join this list once they exist (steps 2-5).
+files = ["src", "train.py", "predict.py"]
