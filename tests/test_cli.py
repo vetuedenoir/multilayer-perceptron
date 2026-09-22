@@ -180,6 +180,60 @@ def test_train_missing_training_set(
     assert_clean_failure(status, capsys, "train.py", "cannot read")
 
 
+def test_train_early_stopping_then_predict(
+    split_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The saved weights are those of the best epoch, not the last one."""
+    model_path = split_dir / "model.json"
+    assert train.main(train_args(split_dir, "--epochs", "40",
+                                 "--early-stopping", "--patience", "3")) == 0
+    out = capsys.readouterr().out
+    assert "early stopping" in out.splitlines()[-2]
+    loaded = load_model(model_path)
+    best_epoch = loaded.history.best_epoch
+    assert best_epoch is not None
+    assert loaded.training["early_stopping"] is not None
+    assert loaded.training["early_stopping"]["patience"] == 3
+
+    assert predict.main(["--model", str(model_path),
+                         "--dataset", str(split_dir / "data_valid.csv")]) == 0
+    bce_line = next(line for line in capsys.readouterr().out.splitlines()
+                    if line.startswith("binary cross-entropy:"))
+    assert float(bce_line.split(":")[1]) == pytest.approx(
+        loaded.history.valid["loss"][best_epoch - 1], abs=1e-4)
+
+
+@pytest.mark.parametrize(
+    ("extra", "match"),
+    [
+        (["--patience", "0"], "patience"),
+        (["--min-delta", "-1"], "min_delta"),
+        (["--monitor", "valid_auc"], "'valid_auc', expected one of"),
+        (["--monitor", "loss"], "monitored value"),
+    ],
+)
+def test_train_invalid_early_stopping(
+    split_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+    extra: list[str],
+    match: str,
+) -> None:
+    """An invalid early stopping option is a clean failure."""
+    status = train.main(train_args(split_dir, "--early-stopping", *extra))
+    assert_clean_failure(status, capsys, "train.py", match)
+
+
+def test_train_ignores_early_stopping_options_when_off(
+    split_dir: Path,
+) -> None:
+    """Without --early-stopping, the other options are not even read."""
+    assert train.main(train_args(split_dir, "--patience", "0")) == 0
+    loaded = load_model(split_dir / "model.json")
+    assert loaded.training["early_stopping"] is None
+    assert loaded.history.best_epoch is None
+
+
 def test_predict_truncated_model(
     split_dir: Path,
     capsys: pytest.CaptureFixture[str],

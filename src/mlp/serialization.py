@@ -5,6 +5,10 @@ redeclares anything: the architecture, the weights, the compile
 arguments, the scaler fitted on the training set, the class names, and
 the hyperparameters and history of the training.
 
+Version 2 of the format adds the early stopping configuration of the
+training and the best and stopped epochs of its history. A version 1
+file is still read, with no early stopping.
+
 :func:`model_to_dict` and :func:`model_from_dict` are pure; only
 :func:`save_model` and :func:`load_model` touch the file system.
 """
@@ -14,6 +18,7 @@ from typing import Any, Final, Mapping, NamedTuple, Sequence, TypedDict
 
 import numpy as np
 
+from mlp.early_stopping import EarlyStopping, EarlyStoppingConfig
 from mlp.errors import ModelFileError, ShapeError
 from mlp.history import History
 from mlp.layers import LAYERS, LayerConfig
@@ -22,7 +27,11 @@ from mlp.preprocessing import Scaler
 from mlp.registry import get_from_registry
 from mlp.types import StrPath
 
-FORMAT_VERSION: Final[int] = 1
+FORMAT_VERSION: Final[int] = 2
+"""Version written by :func:`save_model`."""
+
+SUPPORTED_VERSIONS: Final[tuple[int, ...]] = (1, 2)
+"""Versions :func:`load_model` can read."""
 
 PARAM_NAMES: Final[tuple[str, str]] = ("W", "b")
 """Keys of the parameters of a dense layer, in params() order."""
@@ -34,6 +43,7 @@ class TrainingConfig(TypedDict):
     epochs: int
     batch_size: int
     seed: int | None
+    early_stopping: EarlyStoppingConfig | None
 
 
 class LoadedModel(NamedTuple):
@@ -163,15 +173,28 @@ def _build_model(data: Mapping[str, Any]) -> Model:
     return model
 
 
-def _training_config(data: Mapping[str, Any]) -> TrainingConfig:
-    """Return the training hyperparameters stored in `data`."""
+def _training_config(data: Mapping[str, Any], version: int) -> TrainingConfig:
+    """Return the training hyperparameters stored in `data`.
+
+    A version 1 file predates early stopping, which is then None.
+    """
     seed = data["seed"]
     if seed is not None and (isinstance(seed, bool)
                              or not isinstance(seed, int)):
         raise TypeError(f"expected an integer or null seed, received {seed!r}")
+    early_stopping = data["early_stopping"] if version >= 2 else None
+    if early_stopping is not None:
+        if not isinstance(early_stopping, dict):
+            raise TypeError(
+                "expected an object or null for early_stopping, "
+                f"received {early_stopping!r}"
+            )
+        # Round trip through the class: validated and normalised.
+        early_stopping = EarlyStopping.from_config(early_stopping).to_config()
     return {"epochs": _positive_int(data, "epochs"),
             "batch_size": _positive_int(data, "batch_size"),
-            "seed": seed}
+            "seed": seed,
+            "early_stopping": early_stopping}
 
 
 def model_from_dict(data: Any) -> LoadedModel:
@@ -184,9 +207,12 @@ def model_from_dict(data: Any) -> LoadedModel:
         raise ModelFileError(
             f"expected a JSON object, received {type(data).__name__}")
     version = data.get("format_version")
-    if isinstance(version, bool) or version != FORMAT_VERSION:
+    if isinstance(version, bool) or version not in SUPPORTED_VERSIONS:
         raise ModelFileError(
-            f"expected format_version {FORMAT_VERSION}, received {version!r}")
+            "expected a format_version in "
+            f"{', '.join(map(str, SUPPORTED_VERSIONS))}, "
+            f"received {version!r}"
+        )
     try:
         model = _build_model(data)
         preprocessing = data["preprocessing"]
@@ -202,7 +228,7 @@ def model_from_dict(data: Any) -> LoadedModel:
                 or not all(isinstance(label, str) for label in labels):
             raise ValueError(
                 f"expected {n_classes} class names, received {labels!r}")
-        training = _training_config(data["training"])
+        training = _training_config(data["training"], version)
         history = History.from_dict(data["training"]["history"])
     except KeyError as e:
         raise ModelFileError(f"invalid model: missing key {e}") from e
@@ -252,6 +278,7 @@ def load_model(path: StrPath) -> LoadedModel:
 
 __all__ = [
     "FORMAT_VERSION",
+    "SUPPORTED_VERSIONS",
     "TrainingConfig",
     "LoadedModel",
     "model_to_dict",

@@ -14,6 +14,7 @@ from typing import Final, Sequence
 import numpy as np
 
 from mlp.data import LABELS, read_dataset, to_arrays
+from mlp.early_stopping import EarlyStopping, check_monitor
 from mlp.errors import MLPError
 from mlp.layers import DenseLayer
 from mlp.losses import LOSSES
@@ -33,6 +34,9 @@ DEFAULT_LOSSES: Final[dict[str, str]] = {
     "sigmoid": "binaryCrossentropy",
 }
 """Loss used when --loss is not given, by output activation."""
+
+EARLY_STOPPING: Final[EarlyStopping] = EarlyStopping()
+"""Source of the defaults of the early stopping options."""
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -79,6 +83,28 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
                              "(default: %(default)s)")
     parser.add_argument("--plot", action="store_true",
                         help="plot the learning curves at the end")
+
+    stopping = parser.add_argument_group(
+        "early stopping",
+        "ignored without --early-stopping",
+    )
+    stopping.add_argument("--early-stopping", action="store_true",
+                          help="stop when the monitored value stops "
+                               "improving")
+    stopping.add_argument("--patience", type=int,
+                          default=EARLY_STOPPING.patience,
+                          help="epochs without improvement before stopping "
+                               "(default: %(default)s)")
+    stopping.add_argument("--min-delta", type=float,
+                          default=EARLY_STOPPING.min_delta,
+                          help="smallest change counted as an improvement "
+                               "(default: %(default)s)")
+    stopping.add_argument("--monitor", default=EARLY_STOPPING.monitor,
+                          help="value watched, <train|valid>_<loss|metric> "
+                               "(default: %(default)s)")
+    stopping.add_argument("--no-restore-best", action="store_true",
+                          help="keep the weights of the last epoch instead "
+                               "of the best one")
     return parser.parse_args(argv)
 
 
@@ -130,12 +156,31 @@ def build_model(args: argparse.Namespace, loss: str) -> Model:
     return model
 
 
+def build_early_stopping(args: argparse.Namespace) -> EarlyStopping | None:
+    """Return the early stopping of the command line, None when off.
+
+    The monitored value is checked against the compiled metrics right
+    away, so that a typo fails before the datasets are read.
+    """
+    if not args.early_stopping:
+        return None
+    early_stopping = EarlyStopping(
+        monitor=args.monitor,
+        patience=args.patience,
+        min_delta=args.min_delta,
+        restore_best_weights=not args.no_restore_best,
+    )
+    check_monitor(early_stopping, METRICS, has_validation=True)
+    return early_stopping
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the program and return its exit status."""
     args = parse_args(argv)
     try:
         loss = resolve_loss(args.loss, args.output_activation)
         model = build_model(args, loss)
+        early_stopping = build_early_stopping(args)
 
         x_train, labels_train = to_arrays(read_dataset(args.train))
         x_valid, labels_valid = to_arrays(read_dataset(args.valid))
@@ -155,10 +200,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             x_train, y_train,
             validation_data=(x_valid, y_valid),
             epochs=args.epochs, batch_size=args.batch_size, seed=args.seed,
+            early_stopping=early_stopping,
         )
         save_model(args.model, model, scaler, LABELS,
                    {"epochs": args.epochs, "batch_size": args.batch_size,
-                    "seed": args.seed})
+                    "seed": args.seed,
+                    "early_stopping": (early_stopping.to_config()
+                                       if early_stopping else None)})
         print(f"> saving model '{args.model}' to disk...")
     except (MLPError, OSError) as e:
         print(f"{PROG}: error: {e}", file=sys.stderr)

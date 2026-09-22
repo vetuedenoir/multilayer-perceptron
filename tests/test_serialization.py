@@ -23,7 +23,8 @@ from mlp.types import FloatArray, IntArray
 
 FEATURES = 4
 LABELS = ["B", "M"]
-TRAINING: TrainingConfig = {"epochs": 5, "batch_size": 8, "seed": 0}
+TRAINING: TrainingConfig = {"epochs": 5, "batch_size": 8, "seed": 0,
+                            "early_stopping": None}
 
 
 def raw_data(
@@ -181,9 +182,9 @@ def test_truncated_file(tmp_path: Path) -> None:
     assert isinstance(info.value.__cause__, json.JSONDecodeError)
 
 
-@pytest.mark.parametrize("version", [None, 0, 2, "1", True])
+@pytest.mark.parametrize("version", [None, 0, 3, "1", "2", True])
 def test_unknown_format_version(version: object) -> None:
-    """Only the current format version is understood."""
+    """Only the supported format versions are understood."""
     data = valid_dict()
     data["format_version"] = version
     with pytest.raises(ModelFileError, match="format_version"):

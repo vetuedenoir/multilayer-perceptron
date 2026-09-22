@@ -16,13 +16,16 @@ METRIC_COLORS: Final[Mapping[str, str]] = {
 DEFAULT_COLOR: Final[str] = "tab:gray"
 TRAIN_STYLE: Final[str] = "-"
 VALID_STYLE: Final[str] = "--"
+BEST_EPOCH_COLOR: Final[str] = "black"
+BEST_EPOCH_STYLE: Final[str] = ":"
 
 
 def plot_history(history: History, title: str = "Training history") -> None:
     """Show the loss on the left and the other metrics on the right.
 
     Solid lines are the training values, dashed lines the validation
-    ones (drawn only when the history has some).
+    ones (drawn only when the history has some). A dotted vertical line
+    marks the best epoch of an early-stopped training.
     """
     epochs = range(1, history.epochs + 1)
     fig, (ax_loss, ax_metrics) = plt.subplots(1, 2, figsize=(16, 6))
@@ -38,6 +41,11 @@ def plot_history(history: History, title: str = "Training history") -> None:
             ax.plot(epochs, history.valid[name],
                     label=f"Validation {label}",
                     color=color, linestyle=VALID_STYLE)
+
+    if history.best_epoch is not None:
+        for ax in (ax_loss, ax_metrics):
+            ax.axvline(history.best_epoch, label="Best epoch",
+                       color=BEST_EPOCH_COLOR, linestyle=BEST_EPOCH_STYLE)
 
     ax_loss.set_title("Loss")
     ax_loss.set_ylabel("Loss")

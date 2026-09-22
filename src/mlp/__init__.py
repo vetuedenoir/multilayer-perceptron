@@ -1,6 +1,7 @@
 """Multilayer perceptron implemented from scratch on numpy."""
 
 from mlp.activations import ACTIVATIONS, Activation
+from mlp.early_stopping import EarlyStopping
 from mlp.errors import (
     ConfigurationError,
     DatasetError,
@@ -29,6 +30,7 @@ from mlp.serialization import LoadedModel, load_model, save_model
 __all__ = [
     "Model",
     "History",
+    "EarlyStopping",
     "Layer",
     "LayerConfig",
     "LAYERS",

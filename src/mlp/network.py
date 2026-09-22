@@ -10,6 +10,12 @@ from typing import Iterable, Iterator, Mapping, Sequence, TypedDict
 
 import numpy as np
 
+from mlp.early_stopping import (
+    EarlyStopping,
+    check_monitor,
+    initial_state,
+    update_state,
+)
 from mlp.errors import (
     ConfigurationError,
     NotBuiltError,
@@ -132,6 +138,27 @@ def format_epoch_line(
         line += " | " + ", ".join(
             f"valid_{name}: {value:.4f}" for name, value in valid.items())
     return line
+
+
+def format_early_stop_line(
+    config: EarlyStopping,
+    best_epoch: int,
+    best_value: float,
+    stopped_epoch: int | None,
+) -> str:
+    """Return the line displayed at the end of an early-stopped training.
+
+    Example::
+
+        early stopping at epoch 37, best epoch 27 (valid_loss 0.0812),
+        weights restored
+    """
+    start = (f"early stopping at epoch {stopped_epoch}"
+             if stopped_epoch is not None else "early stopping not triggered")
+    end = ("weights restored" if config.restore_best_weights
+           else "last weights kept")
+    return (f"{start}, best epoch {best_epoch} "
+            f"({config.monitor} {best_value:.4f}), {end}")
 
 
 class Model:
@@ -353,6 +380,7 @@ class Model:
         validation_data: tuple[FloatArray, FloatArray] | None = None,
         seed: int | None = None,
         verbose: bool = True,
+        early_stopping: EarlyStopping | None = None,
     ) -> History:
         """Train the model and return the history of this training.
 
@@ -361,13 +389,21 @@ class Model:
         training. Layers already built keep their weights, so calling
         fit() again resumes the training.
 
+        With `early_stopping`, the training ends once the monitored value
+        stops improving, and the weights of the best epoch are put back
+        (at the end of the epochs too) when it asks for it.
+
         Raise NotBuiltError before compile(), ShapeError on targets that
-        do not fit the loss, and TrainingDivergedError when the loss
-        stops being finite.
+        do not fit the loss, ConfigurationError when the monitored value
+        is not recorded, and TrainingDivergedError when the loss stops
+        being finite.
         """
         loss, _ = self._require_compiled()
         _check_positive_int(epochs, "epochs")
         _check_positive_int(batch_size, "batch_size")
+        if early_stopping is not None:
+            check_monitor(early_stopping, self.metrics,
+                          validation_data is not None)
         self._check_samples(x, y)
         if validation_data is not None:
             self._check_samples(*validation_data)
@@ -380,6 +416,9 @@ class Model:
             check_targets(loss, validation_data[1], output_units)
 
         history = History()
+        state = (initial_state(early_stopping)
+                 if early_stopping is not None else None)
+        best_params: list[list[FloatArray]] | None = None
         for epoch in range(1, epochs + 1):
             for x_batch, y_batch in iter_batches(x, y, batch_size, rng):
                 self._train_step(x_batch, y_batch)
@@ -399,6 +438,31 @@ class Model:
             history.append(train, valid)
             if verbose:
                 print(format_epoch_line(epoch, epochs, train, valid))
+            if early_stopping is None or state is None:
+                continue
+            values = train if early_stopping.split == "train" else valid
+            assert values is not None  # checked by check_monitor
+            state, stop = update_state(
+                state, values[early_stopping.name], epoch, early_stopping)
+            if state.best_epoch == epoch and \
+                    early_stopping.restore_best_weights:
+                # Copied: nothing guarantees that an optimizer will
+                # never update the parameters in place.
+                best_params = [[p.copy() for p in layer.params()]
+                               for layer in self.layers]
+            if stop:
+                history.stopped_epoch = epoch
+                break
+
+        if early_stopping is not None and state is not None:
+            history.best_epoch = state.best_epoch
+            if best_params is not None:
+                for layer, params in zip(self.layers, best_params):
+                    layer.set_params(params)
+            if verbose:
+                print(format_early_stop_line(
+                    early_stopping, state.best_epoch, state.best,
+                    history.stopped_epoch))
         self.history = history
         return history
 
@@ -439,4 +503,5 @@ __all__ = [
     "to_class_labels",
     "check_targets",
     "format_epoch_line",
+    "format_early_stop_line",
 ]
