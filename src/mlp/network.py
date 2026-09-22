@@ -1,8 +1,8 @@
 
 from mlp.layers import DenseLayer
-from mlp.losses import BinaryCrossentropy, CategoricalCrossentropy
-from mlp.activations import Sigmoid, Softmax
+from mlp.losses import LOSSES, resolve_output_grad
 from mlp.metrics import METRICS
+from mlp.registry import get_from_registry
 import numpy as np
 import json
 import matplotlib.pyplot as plt
@@ -143,17 +143,20 @@ class Model:
             raise ValueError("Received an Invalid value for 'batch_size', "
             "expected a positive integer.")
 
-        if isinstance(self.loss, BinaryCrossentropy) and y.shape[1] != 1:
+        is_binary = self.loss.name == "binaryCrossentropy"
+        is_categorical = self.loss.name == "categoricalCrossentropy"
+
+        if is_binary and y.shape[1] != 1:
             raise ValueError("Invalid shape for y, expected a shape of (m, 1) "
             "for BinaryCrossentropy loss.")
-        if isinstance(self.loss, BinaryCrossentropy) and self.layers[-1].units != 1:
+        if is_binary and self.layers[-1].units != 1:
             raise ValueError("Invalid number of units in the last layer, " \
             "expected 1 for BinaryCrossentropy loss.")
 
-        if isinstance(self.loss, CategoricalCrossentropy) and y.shape[1] <= 1:
+        if is_categorical and y.shape[1] <= 1:
             raise ValueError("Invalid shape for y, expected a shape of (m, n) with n > 1 "
             "for CategoricalCrossentropy loss.")
-        if isinstance(self.loss, CategoricalCrossentropy) and self.layers[-1].units != y.shape[1]:
+        if is_categorical and self.layers[-1].units != y.shape[1]:
             raise ValueError("Invalid shape for y, expected a shape of (m, n) " \
             "with n equal to the number of units in the last layer for CategoricalCrossentropy loss.")
 
@@ -200,35 +203,21 @@ class Model:
 
     def compile(self, loss, metrics=['accuracy']):
 
-        if self.layers[-1].activation == Softmax and loss == "BinaryCrossentropy":
+        last_activation = self.layers[-1].activation.name
+
+        self.loss = get_from_registry(LOSSES, loss, "loss")
+
+        if last_activation == "softmax" and self.loss.name == "binaryCrossentropy":
             raise ValueError("Invalid combination of loss function and activation function in the last layer, "
             "Softmax activation is not compatible with BinaryCrossentropy loss.")
 
-        if self.layers[-1].activation == Softmax and self.layers[-1].units == 1:
+        if last_activation == "softmax" and self.layers[-1].units == 1:
             raise ValueError("Invalid number of units in the last layer, "
             "Softmax needs at least 2 units (it outputs a probability distribution "
             "over the units of the layer).")
 
-        if loss == "BinaryCrossentropy":
-            self.loss = BinaryCrossentropy()
-            if self.layers[-1].activation == Sigmoid:
-                self.opti = True
-                self.backward_loss = self.loss.backward_X_Sigmoid
-            else:
-                self.backward_loss = self.loss.backward
-        elif loss == "CategoricalCrossentropy":
-            self.loss = CategoricalCrossentropy()
-            if self.layers[-1].activation == Softmax:  
-                self.opti = True
-                self.backward_loss = self.loss.backward_X_Softmax
-            else:
-                self.backward_loss = self.loss.backward
-        else:
-            raise NameError("Received an Invalid name for 'loss', "
-                    "expected an str equal to 'BinaryCrossentropy' or 'CategoricalCrossentropy'.")
-        
-        for i in range(len(self.layers)):
-            self.layers[i].activation = self.layers[i].activation()
+        self.backward_loss, self.opti = resolve_output_grad(self.loss,
+                                                            last_activation)
 
         valid_metrics = set(self.metric_functions.keys())
         for metric in metrics:

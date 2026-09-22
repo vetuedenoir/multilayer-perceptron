@@ -1,111 +1,106 @@
+"""Classification metrics, as pure functions gathered in a registry.
+
+Every metric works on one-dimensional arrays of integer class labels,
+never on the raw output matrix of the network: turning probabilities
+into labels is the job of the caller. Both arrays must have the same
+shape, otherwise a :class:`~mlp.errors.ShapeError` is raised.
+
+A metric whose denominator is zero (no sample, no positive prediction,
+no positive label) returns ``0.0`` rather than raising: an epoch with no
+predicted positive is a legitimate state of the training, not an error.
+"""
+
+from typing import Callable, Final, Mapping, TypeAlias
+
 import numpy as np
 
+from mlp.errors import ShapeError
+from mlp.types import IntArray
 
-def accuracy_score_(y, y_pred):
-    """
-    Compute the accuracy score.
-    Args:
-        y:a numpy.ndarray for the correct labels
-        y_pred:a numpy.ndarray for the predicted labels
-    Returns:
-        The accuracy score as a float.
-        None on any error.
-    Raises:
-        This function should not raise any Exception.
-    """
+MetricFn: TypeAlias = Callable[[IntArray, IntArray], float]
 
-    correct_classification = 0
-    for itrue, ipred in zip(y, y_pred): 
-        if itrue == ipred:
-            correct_classification += 1
-    if len(y) == 0:
+
+def _check_labels(y: IntArray, y_pred: IntArray) -> None:
+    """Raise ShapeError unless `y` and `y_pred` are 1-D and aligned."""
+    if y.ndim != 1 or y_pred.ndim != 1:
+        raise ShapeError(
+            "expected one-dimensional arrays of class labels, received "
+            f"shapes {y.shape} and {y_pred.shape}"
+        )
+    if y.shape != y_pred.shape:
+        raise ShapeError(
+            "expected y and y_pred to have the same shape, received "
+            f"{y.shape} and {y_pred.shape}"
+        )
+
+
+def accuracy_score(y: IntArray, y_pred: IntArray) -> float:
+    """Return the fraction of samples predicted correctly."""
+    _check_labels(y, y_pred)
+    if y.size == 0:
         return 0.0
-    return correct_classification / len(y)
+    return float(np.mean(y == y_pred))
 
 
-def precision_score_(y, y_pred, pos_label=1):
+def precision_score(
+    y: IntArray,
+    y_pred: IntArray,
+    pos_label: int = 1,
+) -> float:
+    """Return the precision of class `pos_label`.
+
+    That is, the fraction of samples predicted as `pos_label` that
+    really belong to it.
     """
-    Compute the precision score.
-    Args:
-        y:a numpy.ndarray for the correct labels
-        y_pred:a numpy.ndarray for the predicted labels
-        pos_label: str or int, the class on which to report the precision_score (default=1)
-    Returns:
-        The precision score as a float.
-        None on any error.
-    Raises:
-        This function should not raise any Exception.
-    """
-
-    true_positif = 0
-    false_positif = 0
-
-    for itrue, ipred in zip(y, y_pred):
-        if ipred == pos_label:
-            if itrue == ipred:
-                true_positif += 1
-            else:
-                false_positif += 1
-
-
-    if true_positif + false_positif == 0:
+    _check_labels(y, y_pred)
+    predicted_positive = y_pred == pos_label
+    n_predicted = int(np.count_nonzero(predicted_positive))
+    if n_predicted == 0:
         return 0.0
-    return   true_positif / (true_positif + false_positif)
+    true_positive = int(np.count_nonzero(predicted_positive & (y == y_pred)))
+    return true_positive / n_predicted
 
 
+def recall_score(
+    y: IntArray,
+    y_pred: IntArray,
+    pos_label: int = 1,
+) -> float:
+    """Return the recall of class `pos_label`.
 
-def recall_score_(y, y_pred, pos_label=1):
+    That is, the fraction of the samples truly labelled `pos_label` that
+    were predicted as such.
     """
-    Compute the recall score.
-    Args:
-        y:a numpy.ndarray for the correct labels
-        y_pred:a numpy.ndarray for the predicted labels
-        pos_label: str or int, the class on which to report the precision_score (default=1)
-    Returns:
-        The recall score as a float.
-        None on any error.
-    Raises:
-        This function should not raise any Exception.
-    """
-
-    true_positif = 0
-    total_positif = 0
-
-    for itrue, ipred in zip(y, y_pred):
-        if itrue == pos_label:
-            total_positif += 1
-            if itrue == ipred:
-                true_positif += 1
-
-    if total_positif == 0:
+    _check_labels(y, y_pred)
+    actual_positive = y == pos_label
+    n_actual = int(np.count_nonzero(actual_positive))
+    if n_actual == 0:
         return 0.0
-    return true_positif / total_positif
+    true_positive = int(np.count_nonzero(actual_positive & (y == y_pred)))
+    return true_positive / n_actual
 
 
-
-def f1_score_(y, y_pred, pos_label=1):
-    """
-    Compute the f1 score.
-    Args:
-        y:a numpy.ndarray for the correct labels
-        y_pred:a numpy.ndarray for the predicted labels
-        pos_label: str or int, the class on which to report the precision_score (default=1)
-    Returns:
-        The f1 score as a float.
-        None on any error.
-    Raises:
-        his function should not raise any Exception.
-    """
-    precision = precision_score_(y, y_pred)
-    recall = recall_score_(y, y_pred)
-
-    if precision + recall == 0:
+def f1_score(y: IntArray, y_pred: IntArray, pos_label: int = 1) -> float:
+    """Return the harmonic mean of precision and recall for `pos_label`."""
+    precision = precision_score(y, y_pred, pos_label)
+    recall = recall_score(y, y_pred, pos_label)
+    if precision + recall == 0.0:
         return 0.0
-    return (2 * precision * recall) / (precision + recall) 
+    return (2.0 * precision * recall) / (precision + recall)
 
-METRICS = {
-    "accuracy": accuracy_score_,
-    "precision": precision_score_,
-    "recall": recall_score_,
-    "f1": f1_score_
+
+METRICS: Final[Mapping[str, MetricFn]] = {
+    "accuracy": accuracy_score,
+    "precision": precision_score,
+    "recall": recall_score,
+    "f1": f1_score,
 }
+
+__all__ = [
+    "MetricFn",
+    "accuracy_score",
+    "precision_score",
+    "recall_score",
+    "f1_score",
+    "METRICS",
+]

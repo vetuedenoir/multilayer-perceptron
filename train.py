@@ -86,27 +86,27 @@ def train_model(X, Y):
     # ])
 
     # Le meilleur pour l'instant avec seed 14 loss basse a 0.06 et accuracy a 96%
-    model = Model([
-        DenseLayer(40, activation='ReLU', weights_initializer="glorotUniform"),
-        DenseLayer(120, activation='ReLU', weights_initializer="glorotUniform"),
-        DenseLayer(80, activation='ReLU', weights_initializer="glorotUniform"),
-        DenseLayer(1, activation='Sigmoid')
-    ])
+    # model = Model([
+    #     DenseLayer(40, activation='ReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(120, activation='ReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(80, activation='ReLU', weights_initializer="glorotUniform"),
+    #     DenseLayer(1, activation='Sigmoid')
+    # ])
 
 
     # model = Model([
     #     DenseLayer(40, activation='ReLU', weights_initializer="glorotUniform"),
     #     DenseLayer(120, activation='ReLU', weights_initializer="glorotUniform"),
     #     DenseLayer(80, activation='ReLU', weights_initializer="glorotUniform"),
-    #     DenseLayer(1, activation='Softmax')
+    #     DenseLayer(2, activation='Softmax')
     # ])
 
-    # model = Model((
-    #     DenseLayer(40, activation='LeakyReLU', weights_initializer="glorotUniform"),
-    #     DenseLayer(120, activation='LeakyReLU', weights_initializer="glorotUniform"),
-    #     DenseLayer(80, activation='LeakyReLU', weights_initializer="glorotUniform"),
-    #     DenseLayer(1, activation='Sigmoid')
-    # ))
+    model = Model((
+        DenseLayer(40, activation='LeakyReLU', weights_initializer="glorotUniform"),
+        DenseLayer(120, activation='LeakyReLU', weights_initializer="glorotUniform"),
+        DenseLayer(80, activation='LeakyReLU', weights_initializer="glorotUniform"),
+        DenseLayer(1, activation='Sigmoid')
+    ))
 
     # model = Model([
     #     DenseLayer(40, activation='LeakyReLU', weights_initializer="glorotUniform"),
@@ -125,9 +125,9 @@ def train_model(X, Y):
 
     model.summary()
 
-    model.fit_(X_train, Y_train, 
+    model.fit_(X_train, Y_train,
                validation_X=X_validation, validation_Y=Y_validation,
-               epochs=60)
+               epochs=60, batch_size=8)
 
     model.save_weigts_bias()
     # model.printWeights()

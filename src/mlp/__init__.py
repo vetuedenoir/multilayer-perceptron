@@ -1,20 +1,35 @@
-from mlp.network import Model
+"""Multilayer perceptron implemented from scratch on numpy."""
+
+from mlp.activations import ACTIVATIONS, Activation
+from mlp.initializers import INITIALIZERS, Initializer
 from mlp.layers import DenseLayer
-from mlp.activations import Sigmoid, ReLU, LeakyReLU, Softmax
-from mlp.losses import BinaryCrossentropy, CategoricalCrossentropy
-from mlp.metrics import accuracy_score_, precision_score_, recall_score_, f1_score_
+from mlp.losses import LOSSES, Loss, resolve_output_grad
+from mlp.metrics import (
+    METRICS,
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
+from mlp.network import Model
+from mlp.optimizers import OPTIMIZERS, SGD, Optimizer
 
 __all__ = [
     "Model",
     "DenseLayer",
-    "Sigmoid",
-    "ReLU",
-    "LeakyReLU",
-    "Softmax",
-    "BinaryCrossentropy",
-    "CategoricalCrossentropy",
-    "accuracy_score_",
-    "precision_score_",
-    "recall_score_",
-    "f1_score_",
+    "Activation",
+    "ACTIVATIONS",
+    "Loss",
+    "LOSSES",
+    "resolve_output_grad",
+    "Initializer",
+    "INITIALIZERS",
+    "Optimizer",
+    "SGD",
+    "OPTIMIZERS",
+    "accuracy_score",
+    "precision_score",
+    "recall_score",
+    "f1_score",
+    "METRICS",
 ]
