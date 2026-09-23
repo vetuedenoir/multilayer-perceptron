@@ -1,0 +1,28 @@
+{
+  "hidden": [
+    {
+      "units": 16,
+      "activation": "relu",
+      "initializer": "he_uniform"
+    },
+    {
+      "units": 8,
+      "activation": "leaky_relu",
+      "initializer": "he_normal"
+    },
+    {
+      "units": 4,
+      "activation": "sigmoid",
+      "initializer": "glorot_uniform"
+    }
+  ],
+  "output": {
+    "activation": "softmax",
+    "initializer": "zeros"
+  },
+  "loss": "categoricalCrossentropy",
+  "optimizer": {
+    "name": "nesterov",
+    "learning_rate": 0.005
+  }
+}

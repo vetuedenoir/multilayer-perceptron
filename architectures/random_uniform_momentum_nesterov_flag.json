@@ -1,0 +1,26 @@
+{
+  "hidden": [
+    {
+      "units": 20,
+      "activation": "relu",
+      "initializer": "random_uniform"
+    },
+    {
+      "units": 10,
+      "activation": "relu",
+      "initializer": "random_uniform"
+    }
+  ],
+  "output": {
+    "activation": "sigmoid",
+    "initializer": "random_uniform"
+  },
+  "optimizer": {
+    "name": "momentum",
+    "learning_rate": 0.005,
+    "hyperparameters": {
+      "momentum": 0.95,
+      "nesterov": true
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "hidden": [
+    {
+      "units": 32,
+      "activation": "relu",
+      "initializer": "he_normal"
+    },
+    {
+      "units": 16,
+      "activation": "relu",
+      "initializer": "he_normal"
+    }
+  ],
+  "output": {
+    "activation": "softmax",
+    "initializer": "he_normal"
+  },
+  "loss": null,
+  "optimizer": {
+    "name": "rmsprop",
+    "learning_rate": 0.00025,
+    "hyperparameters": {
+      "rho": 0.9,
+      "epsilon": 1e-07
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "hidden": [
+    {
+      "units": 24,
+      "activation": "ReLU",
+      "initializer": "heNormal"
+    },
+    {
+      "units": 12,
+      "activation": "LeakyReLU",
+      "initializer": "glorotUniform"
+    }
+  ],
+  "output": {
+    "activation": "Softmax",
+    "initializer": "glorotNormal"
+  },
+  "loss": "CategoricalCrossentropy",
+  "optimizer": {
+    "name": "RMSProp",
+    "learning_rate": 0.0005
+  }
+}

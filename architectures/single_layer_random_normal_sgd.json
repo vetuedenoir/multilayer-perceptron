@@ -1,0 +1,18 @@
+{
+  "hidden": [
+    {
+      "units": 16,
+      "activation": "sigmoid",
+      "initializer": "random_normal"
+    }
+  ],
+  "output": {
+    "activation": "softmax",
+    "initializer": "random_normal"
+  },
+  "optimizer": {
+    "name": "sgd",
+    "learning_rate": 0.025,
+    "hyperparameters": {}
+  }
+}

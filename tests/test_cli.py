@@ -264,14 +264,13 @@ def arch_file_args(directory: Path, path: Path) -> list[str]:
             "--arch-file", str(path)]
 
 
-@pytest.mark.parametrize("name", ["default", "subject", "sigmoid_output",
-                                  "deep_adam", "small_nesterov"])
+@pytest.mark.parametrize("path", sorted(ARCHITECTURES.glob("*.json")),
+                         ids=lambda path: path.stem)
 def test_train_with_every_example_architecture(
     split_dir: Path,
-    name: str,
+    path: Path,
 ) -> None:
     """Every file of architectures/ trains a model."""
-    path = ARCHITECTURES / f"{name}.json"
     assert train.main(arch_file_args(split_dir, path)) == 0
 
 
@@ -281,12 +280,12 @@ def test_train_with_an_architecture_file(split_dir: Path) -> None:
     assert train.main(arch_file_args(split_dir, path)) == 0
     model = load_model(split_dir / "model.json").model
     configs = [layer.get_config() for layer in model.layers]
-    assert [c["units"] for c in configs] == [16, 8, 2]
+    assert [c["units"] for c in configs] == [8, 4, 2]
     assert [c["activation"] for c in configs] \
-        == ["leaky_relu", "leaky_relu", "softmax"]
+        == ["sigmoid", "sigmoid", "softmax"]
     optimizer = model.get_compile_config()["optimizer"]
     assert optimizer["name"] == "nesterov"
-    assert optimizer["learning_rate"] == 0.01
+    assert optimizer["learning_rate"] == 0.005
     assert optimizer["hyperparameters"]["momentum"] == 0.9
 
 

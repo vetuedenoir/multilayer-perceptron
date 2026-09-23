@@ -119,9 +119,17 @@ vérifiés par les couches, l'optimiseur et `compile()`. Exemples dans `architec
 |---|---|---|---|
 | `default.json` | 24, 24 relu | softmax(2) + CCE | sgd 0.0314 |
 | `subject.json` | 24, 24, 24 sigmoid (exemple du sujet) | softmax(2) + CCE | sgd 0.0314 |
-| `sigmoid_output.json` | 24, 24 relu | sigmoid(1) + BCE | sgd 0.0314 |
+| `sigmoid_output.json` | 24, 24 relu | sigmoid(1) + BCE | sgd 0.0157 |
 | `deep_adam.json` | 32, 32, 16 relu | softmax(2) + CCE | adam 0.001 |
-| `small_nesterov.json` | 16, 8 leaky_relu | softmax(2) + CCE | nesterov 0.01, momentum 0.9 |
+| `small_nesterov.json` | 8, 4 sigmoid | softmax(2) + CCE | nesterov 0.005, momentum 0.9 |
+| `single_layer_random_normal_sgd.json` | 16 sigmoid, random_normal | softmax(2), loss omise | sgd 0.025, `hyperparameters` vide |
+| `sigmoid_glorot_momentum.json` | 16, 16 sigmoid, glorot_uniform | softmax(2) + CCE | momentum 0.0025, momentum 0.9 |
+| `random_uniform_momentum_nesterov_flag.json` | 20, 10 relu, random_uniform | sigmoid(1), loss omise | momentum 0.005, momentum 0.95, nesterov true |
+| `relu_he_normal_rmsprop.json` | 32, 16 relu, he_normal | softmax(2), loss null | rmsprop 0.00025, rho 0.9, epsilon 1e-7 |
+| `deep_leaky_rmsprop_binary.json` | 64, 32, 16, 8 leaky_relu | sigmoid(1) + BCE | rmsprop 0.000125 |
+| `leaky_glorot_normal_adam_binary.json` | 16, 8 leaky_relu, glorot_normal | sigmoid(1) + BCE | adam 0.001 |
+| `mixed_layers_nesterov.json` | 16 relu/he_uniform, 8 leaky_relu/he_normal, 4 sigmoid/glorot_uniform | softmax(2) init zeros + CCE | nesterov 0.005 |
+| `camelcase_aliases.json` | 24 ReLU, 12 LeakyReLU (noms CamelCase) | Softmax(2) + CategoricalCrossentropy | RMSProp 0.0005 |
 
 ## Vérifications
 

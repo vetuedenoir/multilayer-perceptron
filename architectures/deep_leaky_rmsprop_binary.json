@@ -1,0 +1,33 @@
+{
+  "hidden": [
+    {
+      "units": 64,
+      "activation": "leaky_relu",
+      "initializer": "he_uniform"
+    },
+    {
+      "units": 32,
+      "activation": "leaky_relu",
+      "initializer": "he_uniform"
+    },
+    {
+      "units": 16,
+      "activation": "leaky_relu",
+      "initializer": "he_uniform"
+    },
+    {
+      "units": 8,
+      "activation": "leaky_relu",
+      "initializer": "he_uniform"
+    }
+  ],
+  "output": {
+    "activation": "sigmoid",
+    "initializer": "he_uniform"
+  },
+  "loss": "binaryCrossentropy",
+  "optimizer": {
+    "name": "rmsprop",
+    "learning_rate": 0.000125
+  }
+}

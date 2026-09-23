@@ -1,0 +1,23 @@
+{
+  "hidden": [
+    {
+      "units": 16,
+      "activation": "leaky_relu",
+      "initializer": "glorot_normal"
+    },
+    {
+      "units": 8,
+      "activation": "leaky_relu",
+      "initializer": "glorot_normal"
+    }
+  ],
+  "output": {
+    "activation": "sigmoid",
+    "initializer": "glorot_normal"
+  },
+  "loss": "binaryCrossentropy",
+  "optimizer": {
+    "name": "adam",
+    "learning_rate": 0.001
+  }
+}

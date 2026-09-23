@@ -1,24 +1,24 @@
 {
   "hidden": [
     {
-      "units": 8,
+      "units": 16,
       "activation": "sigmoid",
-      "initializer": "heUniform"
+      "initializer": "glorot_uniform"
     },
     {
-      "units": 4,
+      "units": 16,
       "activation": "sigmoid",
-      "initializer": "heUniform"
+      "initializer": "glorot_uniform"
     }
   ],
   "output": {
     "activation": "softmax",
-    "initializer": "heUniform"
+    "initializer": "glorot_uniform"
   },
   "loss": "categoricalCrossentropy",
   "optimizer": {
-    "name": "nesterov",
-    "learning_rate": 0.005,
+    "name": "momentum",
+    "learning_rate": 0.0025,
     "hyperparameters": {
       "momentum": 0.9
     }
