@@ -140,7 +140,7 @@ def test_softmax_with_binary_crossentropy_raises() -> None:
     ("kwargs", "match"),
     [
         ({"loss": "mse"}, "loss"),
-        ({"loss": "binaryCrossentropy", "optimizer": "adam"}, "optimizer"),
+        ({"loss": "binaryCrossentropy", "optimizer": "adagrad"}, "optimizer"),
         ({"loss": "binaryCrossentropy", "metrics": ["auc"]}, "metric"),
     ],
 )

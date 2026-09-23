@@ -49,6 +49,43 @@ Lecture :
 Le chemin softmax + CCE (celui du sujet) et cette équivalence sont vérifiés par
 `tests/test_softmax_path.py`.
 
+## Résultats : comparaison des optimiseurs (bonus)
+
+Même split, même réseau (24-24 ReLU, softmax(2) + CCE, `heUniform`, `batch_size=8`,
+seed 14), hyperparamètres par défaut de chaque optimiseur (`momentum=0.9` ; `rho=0.9` ;
+`beta1=0.9`, `beta2=0.999`, `epsilon=1e-8`), avec
+`--epochs 300 --early-stopping --patience 15` : les chiffres sont ceux de la **meilleure
+epoch** (poids restaurés), l'arrêt tombant 15 epochs plus tard.
+
+```bash
+uv run python train.py --optimizer adam --learning-rate 0.001 --epochs 300 --early-stopping --patience 15
+```
+
+| Optimiseur | learning rate | Meilleure epoch | Arrêt | train loss | valid loss | valid accuracy | precision | recall | f1 |
+|---|---|---|---|---|---|---|---|---|---|
+| sgd      | 0.0314 | 11 | 26 | 0.0463 | 0.0619 | **0.9825** | 0.9762 | 0.9762 | 0.9762 |
+| momentum | 0.01   | 5  | 20 | 0.0373 | **0.0598** | **0.9825** | 0.9762 | 0.9762 | 0.9762 |
+| nesterov | 0.01   | 5  | 20 | 0.0376 | **0.0598** | **0.9825** | 0.9762 | 0.9762 | 0.9762 |
+| rmsprop  | 0.001  | 6  | 21 | 0.0585 | 0.0611 | 0.9737 | 0.9535 | 0.9762 | 0.9647 |
+| adam     | 0.001  | 7  | 22 | 0.0529 | 0.0746 | 0.9737 | 0.9535 | 0.9762 | 0.9647 |
+
+Lecture :
+
+- Tous atteignent au moins 0.9737 d'accuracy de validation. Momentum et Nesterov trouvent
+  leur meilleure epoch deux fois plus tôt que SGD (5 contre 11), avec la plus basse valid
+  loss : la vitesse accumulée multiplie le pas effectif par ~`1 / (1 - 0.9) = 10`.
+- Nesterov et momentum classique sont quasi confondus : sur un problème aussi simple, le
+  « coup d'œil en avant » ne change presque rien.
+- RMSprop et Adam, à `lr=0.001`, convergent aussi vite (meilleure epoch 6 et 7) mais
+  s'arrêtent sur une valid loss un peu plus haute et une accuracy de 0.9737 : un exemple
+  de validation de plus est mal classé.
+- Le dataset (455 lignes, 30 features) est trop petit pour que les optimiseurs adaptatifs
+  fassent la différence ; l'intérêt est surtout de pouvoir les brancher sans toucher aux
+  couches (`optimizers.py`, `Model.update()`).
+
+Les hyperparamètres propres à chaque optimiseur ne sont pas des options CLI : ils prennent
+les valeurs de la littérature, et seront réglables par fichier d'architecture (étape 10).
+
 ## Vérifications
 
 ```bash

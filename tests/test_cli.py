@@ -153,6 +153,25 @@ def test_train_saves_the_architecture(split_dir: Path) -> None:
     assert [c["activation"] for c in configs] == ["relu", "relu", "softmax"]
 
 
+def test_train_with_another_optimizer(split_dir: Path) -> None:
+    """--optimizer is saved with its default hyperparameters."""
+    assert train.main(train_args(split_dir, "--optimizer", "adam",
+                                 "--learning-rate", "0.001")) == 0
+    config = load_model(split_dir / "model.json").model.get_compile_config()
+    assert config["optimizer"] == {
+        "name": "adam", "learning_rate": 0.001,
+        "hyperparameters": {"beta1": 0.9, "beta2": 0.999, "epsilon": 1e-8}}
+
+
+def test_train_unknown_optimizer(
+    split_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An unknown optimizer lists the valid ones."""
+    status = train.main(train_args(split_dir, "--optimizer", "adagrad"))
+    assert_clean_failure(status, capsys, "train.py", "Available values")
+
+
 def test_train_zero_units(
     split_dir: Path,
     capsys: pytest.CaptureFixture[str],

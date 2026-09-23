@@ -9,6 +9,13 @@ Version 2 of the format adds the early stopping configuration of the
 training and the best and stopped epochs of its history. A version 1
 file is still read, with no early stopping.
 
+The optimizer is saved as its name, learning rate and hyperparameters
+(``compile.optimizer.hyperparameters``, read with default values when
+absent), never with its internal state (velocities, moment estimates):
+the file is meant to predict, not to resume a training where it
+stopped. A loaded model that is trained again starts with an empty
+optimizer state.
+
 :func:`model_to_dict` and :func:`model_from_dict` are pure; only
 :func:`save_model` and :func:`load_model` touch the file system.
 """
@@ -23,6 +30,7 @@ from mlp.errors import ModelFileError, ShapeError
 from mlp.history import History
 from mlp.layers import LAYERS, LayerConfig
 from mlp.network import Model
+from mlp.optimizers import Optimizer, make_optimizer
 from mlp.preprocessing import Scaler
 from mlp.registry import get_from_registry
 from mlp.types import StrPath
@@ -166,11 +174,28 @@ def _build_model(data: Mapping[str, Any]) -> Model:
     compile_config = data["compile"]
     model.compile(
         compile_config["loss"],
-        optimizer=compile_config["optimizer"]["name"],
+        optimizer=_optimizer(compile_config["optimizer"]),
         metrics=list(compile_config["metrics"]),
-        learning_rate=compile_config["optimizer"]["learning_rate"],
     )
     return model
+
+
+def _optimizer(data: Any) -> Optimizer:
+    """Return the optimizer described by `data`, with an empty state.
+
+    The hyperparameters are optional (files written before they were
+    saved): the optimizer then takes its default values.
+    """
+    if not isinstance(data, dict):
+        raise TypeError(f"expected an optimizer object, received {data!r}")
+    hyperparameters = data.get("hyperparameters", {})
+    if not isinstance(hyperparameters, dict):
+        raise TypeError(
+            "expected an object for the optimizer hyperparameters, "
+            f"received {hyperparameters!r}"
+        )
+    return make_optimizer(data["name"], data["learning_rate"],
+                          **hyperparameters)
 
 
 def _training_config(data: Mapping[str, Any], version: int) -> TrainingConfig:

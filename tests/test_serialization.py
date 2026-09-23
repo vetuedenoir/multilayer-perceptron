@@ -119,7 +119,8 @@ def test_file_is_plain_json_with_expected_sections(tmp_path: Path) -> None:
         "type": "dense", "units": 2, "activation": "softmax",
         "initializer": "glorotUniform"}
     assert content["compile"]["optimizer"] == {"name": "sgd",
-                                               "learning_rate": 0.05}
+                                               "learning_rate": 0.05,
+                                               "hyperparameters": {}}
     assert content["preprocessing"]["labels"] == LABELS
     assert content["preprocessing"]["scaler"]["kind"] == "standard"
     assert set(content["weights"][0]) == {"W", "b"}

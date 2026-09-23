@@ -23,7 +23,15 @@ from mlp.metrics import (
     recall_score,
 )
 from mlp.network import Model
-from mlp.optimizers import OPTIMIZERS, SGD, Optimizer
+from mlp.optimizers import (
+    OPTIMIZERS,
+    SGD,
+    Adam,
+    Momentum,
+    Optimizer,
+    RMSprop,
+    make_optimizer,
+)
 from mlp.preprocessing import SCALERS, Scaler, one_hot, transform
 from mlp.serialization import LoadedModel, load_model, save_model
 
@@ -44,7 +52,11 @@ __all__ = [
     "INITIALIZERS",
     "Optimizer",
     "SGD",
+    "Momentum",
+    "RMSprop",
+    "Adam",
     "OPTIMIZERS",
+    "make_optimizer",
     "accuracy_score",
     "precision_score",
     "recall_score",

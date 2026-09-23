@@ -72,6 +72,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=8,
                         help="samples per gradient step "
                              "(default: %(default)s)")
+    parser.add_argument("--optimizer", default="sgd",
+                        help="update rule, one of sgd, momentum, nesterov, "
+                             "rmsprop, adam, with the default "
+                             "hyperparameters of the literature "
+                             "(default: %(default)s)")
     parser.add_argument("--learning-rate", type=float, default=0.0314,
                         help="step of the gradient descent "
                              "(default: %(default)s)")
@@ -151,7 +156,7 @@ def build_model(args: argparse.Namespace, loss: str) -> Model:
                              activation=args.output_activation,
                              weights_initializer=args.initializer))
     model = Model(layers)
-    model.compile(loss, optimizer="sgd", metrics=METRICS,
+    model.compile(loss, optimizer=args.optimizer, metrics=METRICS,
                   learning_rate=args.learning_rate)
     return model
 

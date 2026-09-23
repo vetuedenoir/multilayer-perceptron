@@ -26,7 +26,7 @@ from mlp.history import History
 from mlp.layers import Layer
 from mlp.losses import LOSSES, GradFn, Loss, resolve_output_grad
 from mlp.metrics import METRICS, MetricFn
-from mlp.optimizers import OPTIMIZERS, Optimizer, OptimizerConfig
+from mlp.optimizers import Optimizer, OptimizerConfig, make_optimizer
 from mlp.registry import get_from_registry, get_many_from_registry
 from mlp.types import FloatArray, IntArray
 
@@ -283,9 +283,11 @@ class Model:
         """Choose the loss, the optimizer and the metrics.
 
         `optimizer` is either a registry name, instantiated with
-        `learning_rate`, or an already configured optimizer, in which
-        case `learning_rate` is ignored. The layers are never modified,
-        so compile() can be called again.
+        `learning_rate` and default hyperparameters (so with an empty
+        state, even on a second compile), or an already configured
+        optimizer, kept as it is (state included), in which case
+        `learning_rate` is ignored. The layers are never modified, so
+        compile() can be called again.
 
         Raise ConfigurationError on an unknown name, on a softmax output
         with the binary cross-entropy, or on a softmax over one unit.
@@ -308,8 +310,7 @@ class Model:
                     "received 1"
                 )
         if isinstance(optimizer, str):
-            factory = get_from_registry(OPTIMIZERS, optimizer, "optimizer")
-            resolved_optimizer = factory(learning_rate)
+            resolved_optimizer = make_optimizer(optimizer, learning_rate)
         else:
             resolved_optimizer = optimizer
         metric_fns = get_many_from_registry(METRICS, metrics, "metric")
@@ -342,10 +343,22 @@ class Model:
             grad = layer.backward(grad)
 
     def update(self) -> None:
-        """Apply the optimizer to the parameters of every layer."""
+        """Apply the optimizer to the parameters of every layer.
+
+        The optimizer gets, in a single call, the flat list of all the
+        parameters (layer 0 ``[W, b]``, layer 1 ``[W, b]``, ...): an
+        optimizer with a state indexes it by position in that list,
+        which stays the same from one batch to the next.
+        """
         optimizer = self._require_compiled()[1]
-        for layer in self.layers:
-            layer.set_params(optimizer.step(layer.params(), layer.grads()))
+        counts = [len(layer.params()) for layer in self.layers]
+        params = [p for layer in self.layers for p in layer.params()]
+        grads = [g for layer in self.layers for g in layer.grads()]
+        new_params = optimizer.step(params, grads)
+        start = 0
+        for layer, count in zip(self.layers, counts):
+            layer.set_params(new_params[start:start + count])
+            start += count
 
     def predict_proba(self, x: FloatArray) -> FloatArray:
         """Return the raw output of the network (probabilities)."""
@@ -387,7 +400,8 @@ class Model:
         The layers not built yet are built first, with the same seeded
         generator that shuffles the batches: a given seed gives the same
         training. Layers already built keep their weights, so calling
-        fit() again resumes the training.
+        fit() again resumes the training; without a new compile(), the
+        optimizer keeps its state too (velocity, running averages).
 
         With `early_stopping`, the training ends once the monitored value
         stops improving, and the weights of the best epoch are put back
