@@ -253,6 +253,93 @@ def test_train_ignores_early_stopping_options_when_off(
     assert loaded.history.best_epoch is None
 
 
+ARCHITECTURES = Path(__file__).resolve().parent.parent / "architectures"
+
+
+def arch_file_args(directory: Path, path: Path) -> list[str]:
+    """Return the argv of a quick training on the network of `path`."""
+    return ["--train", str(directory / "data_train.csv"),
+            "--valid", str(directory / "data_valid.csv"),
+            "--model", str(directory / "model.json"), "--epochs", "3",
+            "--arch-file", str(path)]
+
+
+@pytest.mark.parametrize("name", ["default", "subject", "sigmoid_output",
+                                  "deep_adam", "small_nesterov"])
+def test_train_with_every_example_architecture(
+    split_dir: Path,
+    name: str,
+) -> None:
+    """Every file of architectures/ trains a model."""
+    path = ARCHITECTURES / f"{name}.json"
+    assert train.main(arch_file_args(split_dir, path)) == 0
+
+
+def test_train_with_an_architecture_file(split_dir: Path) -> None:
+    """--arch-file sets the layers, the optimizer and its hyperparameters."""
+    path = ARCHITECTURES / "small_nesterov.json"
+    assert train.main(arch_file_args(split_dir, path)) == 0
+    model = load_model(split_dir / "model.json").model
+    configs = [layer.get_config() for layer in model.layers]
+    assert [c["units"] for c in configs] == [16, 8, 2]
+    assert [c["activation"] for c in configs] \
+        == ["leaky_relu", "leaky_relu", "softmax"]
+    optimizer = model.get_compile_config()["optimizer"]
+    assert optimizer["name"] == "nesterov"
+    assert optimizer["learning_rate"] == 0.01
+    assert optimizer["hyperparameters"]["momentum"] == 0.9
+
+
+def test_train_arch_file_excludes_the_architecture_options(
+    split_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--arch-file with --layers is a usage error (status 2)."""
+    path = ARCHITECTURES / "default.json"
+    with pytest.raises(SystemExit) as info:
+        train.main(train_args(split_dir, "--arch-file", str(path)))
+    assert info.value.code == 2
+    assert "--arch-file cannot be combined with --layers" \
+        in capsys.readouterr().err
+
+
+def test_train_missing_architecture_file(
+    split_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A missing --arch-file is reported, not raised."""
+    status = train.main(arch_file_args(split_dir, split_dir / "absent.json"))
+    assert_clean_failure(status, capsys, "train.py", "absent.json")
+
+
+@pytest.mark.parametrize("content, match", [
+    ("{", "cannot read"),
+    ("[]", "invalid architecture"),
+    ('{"hidden": [], "optimizer": {"name": "sgd", "learning_rate": 0.1}}',
+     "missing key 'output'"),
+    ('{"hidden": [{"units": 8, "activation": "relu"}], '
+     '"output": {"activation": "softmax", "initializer": "heUniform"}, '
+     '"optimizer": {"name": "sgd", "learning_rate": 0.1}}',
+     "missing key 'initializer'"),
+    ('{"hidden": [], '
+     '"output": {"activation": "softmax", "initializer": "heUniform"}, '
+     '"optimizer": {"name": "sgd", "learning_rate": 0.1, '
+     '"hyperparameters": {"momentum": 0.9}}}',
+     "'momentum'"),
+])
+def test_train_invalid_architecture_file(
+    split_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+    content: str,
+    match: str,
+) -> None:
+    """An invalid file is a clean failure naming the file and the fault."""
+    path = split_dir / "arch.json"
+    path.write_text(content)
+    status = train.main(arch_file_args(split_dir, path))
+    assert_clean_failure(status, capsys, "train.py", match)
+
+
 def test_predict_truncated_model(
     split_dir: Path,
     capsys: pytest.CaptureFixture[str],

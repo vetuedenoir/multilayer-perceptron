@@ -5,20 +5,26 @@ Second of the three programs of the subject. The scaler is fitted on the
 training set only, then applied to both sets: the validation set stays
 unseen data. Everything the prediction program needs (architecture,
 weights, scaler, class names, history) ends up in the model file.
+
+The network is described either by the command line options (their
+defaults give the default network), or entirely by a JSON file given
+with --arch-file, which then cannot be combined with those options.
 """
 
 import argparse
+import json
 import sys
-from typing import Final, Sequence
+from typing import Any, Final, Sequence
 
 import numpy as np
 
 from mlp.data import LABELS, read_dataset, to_arrays
 from mlp.early_stopping import EarlyStopping, check_monitor
-from mlp.errors import MLPError
+from mlp.errors import ConfigurationError, MLPError
 from mlp.layers import DenseLayer
 from mlp.losses import LOSSES
 from mlp.network import Model
+from mlp.optimizers import make_optimizer
 from mlp.plotting import plot_history
 from mlp.preprocessing import fit_scaler, one_hot, transform
 from mlp.registry import get_from_registry
@@ -28,6 +34,12 @@ from mlp.types import FloatArray, IntArray
 PROG: Final[str] = "train.py"
 SCALER: Final[str] = "standard"
 METRICS: Final[tuple[str, ...]] = ("accuracy", "precision", "recall", "f1")
+
+ARCH_OPTIONS: Final[tuple[str, ...]] = (
+    "layers", "activation", "initializer", "output_activation", "loss",
+    "optimizer", "learning_rate",
+)
+"""Options describing the network, replaced as a whole by --arch-file."""
 
 DEFAULT_LOSSES: Final[dict[str, str]] = {
     "softmax": "categoricalCrossentropy",
@@ -80,6 +92,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=0.0314,
                         help="step of the gradient descent "
                              "(default: %(default)s)")
+    parser.add_argument("--arch-file", metavar="PATH",
+                        help="read the whole network (layers, loss, "
+                             "optimizer and its hyperparameters) from a "
+                             "JSON file instead of the options above")
     parser.add_argument("--seed", type=int, default=14,
                         help="seed of the weights and of the shuffle "
                              "(default: %(default)s)")
@@ -110,7 +126,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     stopping.add_argument("--no-restore-best", action="store_true",
                           help="keep the weights of the last epoch instead "
                                "of the best one")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.arch_file is not None:
+        given = [name for name in ARCH_OPTIONS
+                 if getattr(args, name) != parser.get_default(name)]
+        if given:
+            parser.error("--arch-file cannot be combined with "
+                         + ", ".join("--" + name.replace("_", "-")
+                                     for name in given))
+    return args
 
 
 def resolve_loss(loss: str | None, output_activation: str) -> str:
@@ -147,18 +171,60 @@ def encode_targets(labels: IntArray, loss: str) -> FloatArray:
     return one_hot(labels, len(LABELS))
 
 
-def build_model(args: argparse.Namespace, loss: str) -> Model:
-    """Return the network described by the command line, compiled."""
-    layers = [DenseLayer(units, activation=args.activation,
-                         weights_initializer=args.initializer)
-              for units in args.layers]
-    layers.append(DenseLayer(output_units(loss),
-                             activation=args.output_activation,
-                             weights_initializer=args.initializer))
-    model = Model(layers)
-    model.compile(loss, optimizer=args.optimizer, metrics=METRICS,
-                  learning_rate=args.learning_rate)
-    return model
+def cli_architecture(args: argparse.Namespace) -> dict[str, Any]:
+    """Return the network of the command line options, as --arch-file."""
+    return {
+        "hidden": [{"units": units, "activation": args.activation,
+                    "initializer": args.initializer}
+                   for units in args.layers],
+        "output": {"activation": args.output_activation,
+                   "initializer": args.initializer},
+        "loss": args.loss,
+        "optimizer": {"name": args.optimizer,
+                      "learning_rate": args.learning_rate},
+    }
+
+
+def read_architecture(path: str) -> Any:
+    """Return the content of the JSON file `path`.
+
+    Raise ConfigurationError when it cannot be read or parsed.
+    """
+    try:
+        with open(path, encoding="utf-8") as file:
+            return json.load(file)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise ConfigurationError(f"cannot read {path!r}: {e}") from e
+
+
+def build_model(arch: Any) -> tuple[Model, str]:
+    """Return the compiled network `arch` describes, and its loss.
+
+    `arch` has the layout of :func:`cli_architecture`; the loss may be
+    absent or null, and the optimizer hyperparameters absent. The output
+    units follow from the loss. The names and values are checked by the
+    layers, the optimizer and compile(); a missing key or a wrong type
+    is a ConfigurationError too.
+    """
+    try:
+        output = arch["output"]
+        loss = resolve_loss(arch.get("loss"), output["activation"])
+        layers = [DenseLayer(layer["units"], activation=layer["activation"],
+                             weights_initializer=layer["initializer"])
+                  for layer in arch["hidden"]]
+        layers.append(DenseLayer(output_units(loss),
+                                 activation=output["activation"],
+                                 weights_initializer=output["initializer"]))
+        optimizer = arch["optimizer"]
+        model = Model(layers)
+        model.compile(loss, metrics=METRICS, optimizer=make_optimizer(
+            optimizer["name"], optimizer["learning_rate"],
+            **optimizer.get("hyperparameters", {})))
+    except KeyError as e:
+        raise ConfigurationError(f"missing key {e}") from e
+    except (TypeError, AttributeError) as e:
+        raise ConfigurationError(f"invalid architecture: {e}") from e
+    return model, loss
 
 
 def build_early_stopping(args: argparse.Namespace) -> EarlyStopping | None:
@@ -183,8 +249,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the program and return its exit status."""
     args = parse_args(argv)
     try:
-        loss = resolve_loss(args.loss, args.output_activation)
-        model = build_model(args, loss)
+        if args.arch_file is None:
+            model, loss = build_model(cli_architecture(args))
+        else:
+            try:
+                model, loss = build_model(read_architecture(args.arch_file))
+            except ConfigurationError as e:
+                raise ConfigurationError(f"{args.arch_file}: {e}") from e
         early_stopping = build_early_stopping(args)
 
         x_train, labels_train = to_arrays(read_dataset(args.train))

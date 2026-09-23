@@ -1,0 +1,23 @@
+{
+  "hidden": [
+    {
+      "units": 24,
+      "activation": "relu",
+      "initializer": "heUniform"
+    },
+    {
+      "units": 24,
+      "activation": "relu",
+      "initializer": "heUniform"
+    }
+  ],
+  "output": {
+    "activation": "softmax",
+    "initializer": "heUniform"
+  },
+  "loss": "categoricalCrossentropy",
+  "optimizer": {
+    "name": "sgd",
+    "learning_rate": 0.0314
+  }
+}

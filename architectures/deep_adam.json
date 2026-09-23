@@ -1,0 +1,33 @@
+{
+  "hidden": [
+    {
+      "units": 32,
+      "activation": "relu",
+      "initializer": "heUniform"
+    },
+    {
+      "units": 32,
+      "activation": "relu",
+      "initializer": "heUniform"
+    },
+    {
+      "units": 16,
+      "activation": "relu",
+      "initializer": "heUniform"
+    }
+  ],
+  "output": {
+    "activation": "softmax",
+    "initializer": "heUniform"
+  },
+  "loss": "categoricalCrossentropy",
+  "optimizer": {
+    "name": "adam",
+    "learning_rate": 0.001,
+    "hyperparameters": {
+      "beta1": 0.9,
+      "beta2": 0.999,
+      "epsilon": 1e-08
+    }
+  }
+}

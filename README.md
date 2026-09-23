@@ -84,7 +84,44 @@ Lecture :
   couches (`optimizers.py`, `Model.update()`).
 
 Les hyperparamètres propres à chaque optimiseur ne sont pas des options CLI : ils prennent
-les valeurs de la littérature, et seront réglables par fichier d'architecture (étape 10).
+les valeurs de la littérature, et se règlent dans un fichier d'architecture (clé
+`optimizer.hyperparameters`, voir ci-dessous).
+
+## Fichier d'architecture (bonus)
+
+Sans option, `train.py` entraîne le réseau par défaut ; `--layers`, `--activation`,
+`--initializer`, `--output-activation`, `--loss`, `--optimizer` et `--learning-rate` le
+modifient. `--arch-file PATH` décrit **tout** le réseau dans un fichier JSON, y compris les
+hyperparamètres de l'optimiseur ; il ne se combine pas avec ces options (erreur d'usage).
+
+```bash
+uv run python train.py --arch-file architectures/deep_adam.json --epochs 300 --early-stopping
+```
+
+```json
+{
+  "hidden": [
+    {"units": 16, "activation": "leaky_relu", "initializer": "heUniform"},
+    {"units": 8, "activation": "leaky_relu", "initializer": "heUniform"}
+  ],
+  "output": {"activation": "softmax", "initializer": "heUniform"},
+  "loss": "categoricalCrossentropy",
+  "optimizer": {"name": "nesterov", "learning_rate": 0.01,
+                "hyperparameters": {"momentum": 0.9}}
+}
+```
+
+Le nombre d'unités de sortie découle de la loss ; `loss` peut être omise (même règle que
+`--loss`) et `hyperparameters` aussi (valeurs par défaut). Les noms et les valeurs sont
+vérifiés par les couches, l'optimiseur et `compile()`. Exemples dans `architectures/` :
+
+| Fichier | Couches cachées | Sortie | Optimiseur |
+|---|---|---|---|
+| `default.json` | 24, 24 relu | softmax(2) + CCE | sgd 0.0314 |
+| `subject.json` | 24, 24, 24 sigmoid (exemple du sujet) | softmax(2) + CCE | sgd 0.0314 |
+| `sigmoid_output.json` | 24, 24 relu | sigmoid(1) + BCE | sgd 0.0314 |
+| `deep_adam.json` | 32, 32, 16 relu | softmax(2) + CCE | adam 0.001 |
+| `small_nesterov.json` | 16, 8 leaky_relu | softmax(2) + CCE | nesterov 0.01, momentum 0.9 |
 
 ## Vérifications
 
