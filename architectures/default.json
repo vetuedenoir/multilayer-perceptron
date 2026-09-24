@@ -1,23 +1,23 @@
 {
   "hidden": [
     {
-      "units": 24,
-      "activation": "relu",
-      "initializer": "heUniform"
+      "units": 64,
+      "activation": "sigmoid",
+      "initializer": "glorot_uniform"
     },
     {
-      "units": 24,
-      "activation": "relu",
-      "initializer": "heUniform"
+      "units": 32,
+      "activation": "sigmoid",
+      "initializer": "glorot_uniform"
     }
   ],
   "output": {
     "activation": "softmax",
-    "initializer": "heUniform"
+    "initializer": "glorot_uniform"
   },
   "loss": "categoricalCrossentropy",
   "optimizer": {
-    "name": "sgd",
-    "learning_rate": 0.0314
+    "name": "rmsprop",
+    "learning_rate": 0.0001
   }
 }

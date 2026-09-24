@@ -150,7 +150,8 @@ def test_train_saves_the_architecture(split_dir: Path) -> None:
     model = load_model(split_dir / "model.json").model
     configs = [layer.get_config() for layer in model.layers]
     assert [c["units"] for c in configs] == [8, 8, 2]
-    assert [c["activation"] for c in configs] == ["relu", "relu", "softmax"]
+    assert [c["activation"] for c in configs] \
+        == ["sigmoid", "sigmoid", "softmax"]
 
 
 def test_train_with_another_optimizer(split_dir: Path) -> None:

@@ -62,14 +62,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
                         help="the training set (default: %(default)s)")
     parser.add_argument("--valid", default="data_valid.csv",
                         help="the validation set (default: %(default)s)")
-    parser.add_argument("--layers", type=int, nargs="+", default=[24, 24],
+    parser.add_argument("--layers", type=int, nargs="+", default=[64, 32],
                         metavar="UNITS",
                         help="units of each hidden layer "
                              "(default: %(default)s)")
-    parser.add_argument("--activation", default="relu",
+    parser.add_argument("--activation", default="sigmoid",
                         help="activation of the hidden layers "
                              "(default: %(default)s)")
-    parser.add_argument("--initializer", default="heUniform",
+    parser.add_argument("--initializer", default="glorot_uniform",
                         help="weights initializer of every layer "
                              "(default: %(default)s)")
     parser.add_argument("--output-activation", default="softmax",
@@ -79,17 +79,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
                         help="loss function (default: categoricalCrossentropy "
                              "for a softmax output, binaryCrossentropy for "
                              "a sigmoid one)")
-    parser.add_argument("--epochs", type=int, default=84,
+    parser.add_argument("--epochs", type=int, default=100,
                         help="number of epochs (default: %(default)s)")
     parser.add_argument("--batch-size", type=int, default=8,
                         help="samples per gradient step "
                              "(default: %(default)s)")
-    parser.add_argument("--optimizer", default="sgd",
+    parser.add_argument("--optimizer", default="rmsprop",
                         help="update rule, one of sgd, momentum, nesterov, "
                              "rmsprop, adam, with the default "
                              "hyperparameters of the literature "
                              "(default: %(default)s)")
-    parser.add_argument("--learning-rate", type=float, default=0.0314,
+    parser.add_argument("--learning-rate", type=float, default=0.0001,
                         help="step of the gradient descent "
                              "(default: %(default)s)")
     parser.add_argument("--arch-file", metavar="PATH",
